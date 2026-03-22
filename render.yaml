@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: blink-alert-server
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false          # paste your token in Render dashboard
+      - key: TELEGRAM_CHAT_ID
+        sync: false          # paste your chat ID after /start
+    plan: free
+    healthCheckPath: /
