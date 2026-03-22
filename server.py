@@ -6,7 +6,7 @@ Auto-registers Telegram webhook on startup.
 
 import os, time, json, logging, requests
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from threading import Thread
 
 # ── CONFIG ────────────────────────────────────────────
@@ -20,6 +20,23 @@ log = logging.getLogger(__name__)
 
 app    = Flask(__name__)
 alerts = []   # in-memory alert store
+
+# ── CORS — allow requests from any HTML file / browser ────
+@app.after_request
+def add_cors(response):
+    response.headers["Access-Control-Allow-Origin"]  = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
+@app.before_request
+def handle_options():
+    if request.method == "OPTIONS":
+        r = make_response("", 204)
+        r.headers["Access-Control-Allow-Origin"]  = "*"
+        r.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
+        r.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        return r
 
 # ── TELEGRAM HELPERS ──────────────────────────────────
 def tg(method: str, payload: dict):
