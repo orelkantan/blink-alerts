@@ -336,7 +336,6 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
     <button class="nav-btn" data-v="alerts" onclick="switchView('alerts')"><span class="nav-icon">🔔</span>התראות מחיר</button>
     <button class="nav-btn" data-v="monthly" onclick="switchView('monthly')"><span class="nav-icon">📅</span>ביצועים חודשיים</button>
     <button class="nav-btn" data-v="settings" onclick="switchView('settings')"><span class="nav-icon">⚙️</span>הגדרות</button>
-    <!-- Server connection badge -->
     <div id="sidebar-server-badge" style="margin-top:6px;border-radius:10px;padding:8px 12px;background:var(--sur);border:1px solid var(--brd);font-size:10px;color:var(--mut);font-family:var(--f2);display:flex;align-items:center;gap:6px">
       <span id="sidebar-server-dot" style="width:6px;height:6px;border-radius:50%;background:var(--mut);flex-shrink:0;display:inline-block"></span>
       <span id="sidebar-server-txt">שרת טלגרם: לא מחובר</span>
@@ -377,7 +376,6 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
           </div>
           <div id="curve-chg" style="text-align:left"></div>
         </div>
-        <!-- Time range selector -->
         <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:10px">
           <button class="range-btn" onclick="setCurveRange('1d')">יום</button>
           <button class="range-btn" onclick="setCurveRange('1w')">שבוע</button>
@@ -431,8 +429,6 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
     <!-- SETTINGS -->
     <div id="view-settings" class="view">
       <div class="page-title">הגדרות</div>
-
-      <!-- ★ SERVER URL — FIRST AND PROMINENT ★ -->
       <div style="background:rgba(245,197,24,.08);border:2px solid rgba(245,197,24,.4);border-radius:16px;padding:18px 16px;margin-bottom:4px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <span style="font-size:26px">🤖</span>
@@ -574,8 +570,6 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
         <div class="page-title">🔔 התראות מחיר</div>
         <span class="badge ba" id="alerts-count">0 התראות</span>
       </div>
-
-      <!-- Permission banner -->
       <div id="notif-banner" style="display:none;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px">
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--gld);margin-bottom:3px">🔔 אפשר התראות לטלפון</div>
@@ -587,8 +581,6 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
         <span style="font-size:18px">✅</span>
         <div style="font-size:12px;color:var(--grn);font-weight:600">התראות פעילות — תקבל notification לטלפון כשמחיר מגיע ליעד</div>
       </div>
-
-      <!-- Add alert form -->
       <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:18px 16px">
         <div style="font-size:13px;font-weight:700;color:var(--txt);margin-bottom:14px">➕ הוסף התראה חדשה</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:flex-end">
@@ -611,11 +603,7 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
         </div>
         <div id="alert-err" style="display:none;color:var(--red);font-size:12px;margin-top:8px;font-family:var(--f2)"></div>
       </div>
-
-      <!-- Alert list -->
       <div id="alert-list"></div>
-
-      <!-- Info box -->
       <div class="info-card">
         <span style="font-size:20px;flex-shrink:0">💡</span>
         <div>
@@ -636,10 +624,7 @@ select.finput{cursor:pointer;color:var(--txt);-webkit-appearance:none;appearance
           <button class="pill" id="mo-val-btn" onclick="setMonthlyMode('val')">שווי תיק</button>
         </div>
       </div>
-      <!-- Summary cards -->
       <div class="stat-grid" id="monthly-stats"></div>
-
-
     </div>
     </div>
   </main>
@@ -762,14 +747,12 @@ let sold=[
 ];
 let cChart=null, pChart=null, curveData=[];
 
-// ── FORMAT ────────────────────────────────────────────
 const n2=v=>isNaN(+v)?"—":(+v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const usd=v=>isNaN(+v)?"—":((+v)<0?"-$":"$")+n2(Math.abs(+v));
 const pct=v=>isNaN(+v)?"—":((+v)>=0?"+":"")+n2(+v)+"%";
 const clr=v=>(+v)>=0?"var(--grn)":"var(--red)";
 const bg=v=>(+v)>=0?"var(--grn1)":"var(--red1)";
 
-// ── COMPUTED ──────────────────────────────────────────
 function totP(){return H.reduce((s,h)=>s+h.sh*h.pr,0)+cash;}
 function stats(){
   const inv=H.reduce((s,h)=>s+h.sh*h.avg,0);
@@ -781,25 +764,10 @@ function stats(){
   return{inv,val,tot,pnl,pnlP,dC,dCP,tR};
 }
 
-// ══════════════════════════════════════════════════════
-// EQUITY CURVE — REAL DATA FROM TRANSACTIONS
-// ══════════════════════════════════════════════════════
-// Logic:
-//   1. Parse all transactions (buys + sells) by date
-//   2. Build a timeline of "portfolio book value" events
-//      - Buy:  cash -= amount  (capital deployed)
-//      - Sell: cash += proceeds; realised P&L recorded
-//   3. Between events we hold the last known value
-//      (we don't have historical prices — honest about that)
-//   4. CURRENT endpoint is always the real live portfolio value
-//   5. Realised gains/losses from closed positions are included
-//      proportionally as they happened
-
 let curveRange="1m";
 let fullCurveData=[];
 const DAY_MS=24*60*60*1000;
 
-// ── DATE PARSER ───────────────────────────────────────
 function parseDateHE(str){
   if(!str) return null;
   if(str.includes("/")){
@@ -818,41 +786,16 @@ function fmtLb(ts, refYear){
   });
 }
 
-// ══════════════════════════════════════════════════════
-// BUILD REAL EQUITY CURVE FROM ACTUAL TRANSACTIONS
-// ══════════════════════════════════════════════════════
-// Algorithm:
-//  1. Collect ALL events (buys, sells, pre-loaded sold positions)
-//  2. Sort chronologically
-//  3. Replay each event — track cash + invested-at-cost + realized P&L
-//  4. Portfolio value at each event = cash + invested(cost) + realizedPnL
-//     (between market closes we use cost basis — the only honest value we have)
-//  5. Today's anchor = current market value (live prices)
-//  6. Fill gaps between events with LINEAR interpolation — no randomness
-//
-// Why this is accurate:
-//  - Every event point is mathematically exact (no guessing)
-//  - Realized P&L from closed trades (e.g. +$5) is added the exact day of sale
-//  - Current market value anchors the "today" endpoint
-//  - Between events: linear is the most honest representation without price history
-
 function genFullCurve(){
   const nowTs=Date.now();
   const nowYear=new Date().getFullYear();
   const currentVal=Math.round(totP()*100)/100;
-
-  // ── Collect events ────────────────────────────────
   const events=[];
-
-  // From live txns array (buys and sells entered by user)
   txns.forEach(function(tx){
     const d=parseDateHE(tx.date);
     if(!d) return;
     events.push({ts:d.getTime(), type:tx.type, tot:tx.tot, sh:tx.sh, pr:tx.pr, avg:tx.pr, t:tx.t, source:"txn"});
   });
-
-  // From pre-loaded sold positions (historical closed trades)
-  // Avoid double-counting if already in txns
   sold.forEach(function(p){
     const d=parseDateHE(p.date);
     if(!d) return;
@@ -865,121 +808,61 @@ function genFullCurve(){
       events.push({ts:d.getTime(), type:"sell_closed", inv:p.inv, sv:p.sv, prf:p.prf, source:"sold"});
     }
   });
-
   events.sort(function(a,b){return a.ts-b.ts;});
-
   if(!events.length){
-    // No transaction history — just show current value as single point
     const d30=nowTs-30*DAY_MS;
-    return [
-      {ts:d30, lb:fmtLb(d30,new Date().getFullYear()), v:currentVal},
-      {ts:nowTs, lb:"היום", v:currentVal}
-    ];
+    return [{ts:d30, lb:fmtLb(d30,new Date().getFullYear()), v:currentVal},{ts:nowTs, lb:"היום", v:currentVal}];
   }
-
-  // ── Replay events chronologically ───────────────────
-  // Start with initial capital = first buy amount
-  // (we don't know exact pre-trade cash, but first buy reveals capital deployed)
-  let simCash=0;
-  let simInvested=0;
-  let simRealized=0;
+  let simCash=0, simInvested=0, simRealized=0;
   const timeline=[];
-
-  // Add a "start" anchor just before first event — shows initial capital
   const firstTs=events[0].ts;
-  const firstCapital=events.filter(function(e){return e.type==="buy";})
-    .reduce(function(s,e){return s+e.tot;},0);
   const firstAnchorTs=firstTs-DAY_MS;
-  // Starting point: 0 (nothing deployed yet)
   timeline.push({ts:firstAnchorTs, v:0});
-
   events.forEach(function(ev){
     if(ev.type==="buy"){
-      simInvested+=ev.tot;
-      simCash-=ev.tot;
+      simInvested+=ev.tot; simCash-=ev.tot;
     } else if(ev.type==="sell"){
-      // Find avg cost for this ticker to compute real P&L
       const h=H.find(function(x){return x.t===ev.t;});
       const avgPrice=h?h.avg:ev.pr;
       const costRecovered=Math.round(ev.sh*avgPrice*100)/100;
       const realizedPnl=Math.round((ev.tot-costRecovered)*100)/100;
-      simCash+=ev.tot;
-      simInvested=Math.max(0,simInvested-costRecovered);
-      simRealized+=realizedPnl;
+      simCash+=ev.tot; simInvested=Math.max(0,simInvested-costRecovered); simRealized+=realizedPnl;
     } else if(ev.type==="sell_closed"){
-      // Pre-loaded closed trade: exact inv and prf known
-      simCash+=ev.sv;
-      simInvested=Math.max(0,simInvested-ev.inv);
-      simRealized+=ev.prf;  // ← this is the exact realized P&L (can be negative)
+      simCash+=ev.sv; simInvested=Math.max(0,simInvested-ev.inv); simRealized+=ev.prf;
     }
-    // Total equity at this moment = cost basis of open positions
-    //   + cash balance + cumulative realized P&L
-    // Using cost basis (not market price) for open positions is HONEST:
-    //   we don't know historical market prices of holdings
     const v=Math.max(0,Math.round((simInvested+simCash+simRealized)*100)/100);
     timeline.push({ts:ev.ts, v:v});
   });
-
-  // ★ Final anchor = live market value (overrides last book-value estimate)
-  // This ensures "today" is always 100% accurate with real prices
   timeline.push({ts:nowTs, v:currentVal});
-
-  // ── Build dense point array with linear interpolation ──
   const pts=[];
   for(let i=0;i<timeline.length;i++){
-    const cur=timeline[i];
-    const next=timeline[i+1];
-    pts.push({
-      ts:cur.ts,
-      lb:fmtLb(cur.ts, nowYear),
-      v:cur.v
-    });
+    const cur=timeline[i], next=timeline[i+1];
+    pts.push({ts:cur.ts, lb:fmtLb(cur.ts, nowYear), v:cur.v});
     if(!next) break;
     const gapDays=Math.round((next.ts-cur.ts)/DAY_MS);
     if(gapDays>1){
       for(let j=1;j<gapDays;j++){
         const t=cur.ts+j*DAY_MS;
         const dow=new Date(t).getDay();
-        if(dow===0||dow===6) continue; // skip weekends
+        if(dow===0||dow===6) continue;
         const frac=j/gapDays;
-        // Linear interpolation — no randomness, no fake data
         const v=Math.round((cur.v+(next.v-cur.v)*frac)*100)/100;
         pts.push({ts:t, lb:fmtLb(t, nowYear), v:Math.max(0,v)});
       }
     }
   }
-
-  // Make sure last point is labeled "היום"
   if(pts.length) pts[pts.length-1].lb="היום";
   return pts;
 }
 
-function genCurve(){
-  // Legacy fallback
-  const v=totP();
-  return [{ts:Date.now()-30*DAY_MS,lb:"30 ימים",v:v},{ts:Date.now(),lb:"היום",v:v}];
-}
-
-// ── SHORT-RANGE SLICES (1d, 1w) ──────────────────────
-// For "יום" and "שבוע" we use the REAL daily change data (h.dc)
-// stored in each holding from the latest Yahoo Finance fetch.
-// This is the only accurate data we have for intraday / weekly movement.
-//
-// h.dc = price change TODAY vs yesterday's close (from Yahoo regularMarketChange)
-// So: yesterdayValue = todayValue - sum(h.dc * h.sh)
-
 function buildShortRangeSlice(range){
   const now=Date.now();
   const curVal=Math.round(totP()*100)/100;
-
-  // Total daily P&L from all holdings (h.dc * shares)
   const dailyPnL=Math.round(H.reduce(function(s,h){return s+(h.dc||0)*h.sh;},0)*100)/100;
   const yesterdayVal=Math.round((curVal-dailyPnL)*100)/100;
-
   if(range==="1d"){
-    // 9 intraday points: yesterday close → now (linear based on dc)
     const pts=[];
-    const marketOpen=now-8*60*60*1000; // ~8h ago = approx market open
+    const marketOpen=now-8*60*60*1000;
     for(let i=0;i<=8;i++){
       const t=marketOpen+i*(now-marketOpen)/8;
       const frac=i/8;
@@ -991,16 +874,12 @@ function buildShortRangeSlice(range){
     pts[pts.length-1].lb="עכשיו";
     return pts;
   }
-
   if(range==="1w"){
-    // 5 trading days: estimate each day's delta as dailyPnL/5 (linear)
-    // This is honest: we only have today's dc, not historical days
     const pts=[];
-    const weekAgoVal=Math.round((curVal-dailyPnL)*100)/100; // best proxy
+    const weekAgoVal=Math.round((curVal-dailyPnL)*100)/100;
     for(let i=5;i>=0;i--){
       const d=new Date(now);
       d.setDate(d.getDate()-i);
-      // skip weekends
       const dow=d.getDay();
       if(dow===0||dow===6) continue;
       const frac=(5-i)/5;
@@ -1011,16 +890,16 @@ function buildShortRangeSlice(range){
     if(pts.length<2) pts.unshift({ts:now-7*DAY_MS,lb:"שבוע",v:weekAgoVal});
     return pts;
   }
-  return null; // not a short range
+  return null;
 }
 
+const RANGE_LABELS={"1d":"יום אחרון","1w":"שבוע אחרון","1m":"30 ימים אחרונים","3m":"3 חודשים","6m":"6 חודשים","ytd":"מתחילת השנה","1y":"12 חודשים","5y":"5 שנים","max":"כל ההיסטוריה"};
+
 function getSlice(range){
-  // Short ranges: use real daily change data (accurate)
   if(range==="1d"||range==="1w"){
     const pts=buildShortRangeSlice(range);
     if(pts&&pts.length>=2) return pts;
   }
-
   const data=fullCurveData.length?fullCurveData:curveData;
   if(!data.length) return [{ts:Date.now(),lb:"היום",v:totP()}];
   const now=Date.now();
@@ -1048,19 +927,11 @@ function getSlice(range){
   return slice;
 }
 
-const RANGE_LABELS={
-  "1d":"יום אחרון","1w":"שבוע אחרון","1m":"30 ימים אחרונים",
-  "3m":"3 חודשים","6m":"6 חודשים","ytd":"מתחילת השנה",
-  "1y":"12 חודשים","5y":"5 שנים","max":"כל ההיסטוריה"
-};
-
 function setCurveRange(r){
   curveRange=r;
-  // Update active button style
   document.querySelectorAll(".range-btn").forEach(function(b){
     b.className="range-btn"+(b.getAttribute("onclick")==="setCurveRange('"+r+"')"?" range-active":"");
   });
-  // Update subtitle label
   const lbl=document.getElementById("curve-range-lbl");
   if(lbl) lbl.textContent=RANGE_LABELS[r]||r;
   const infoLbl=document.getElementById("curve-info-lbl");
@@ -1069,12 +940,10 @@ function setCurveRange(r){
     else if(r==="1w") infoLbl.textContent="5 ימי מסחר · מבוסס שינוי יומי אמיתי";
     else infoLbl.textContent="מבוסס על עסקאות אמיתיות · קו ישר בין עסקאות";
   }
-  // Re-render with new slice
   const slice=getSlice(r);
   renderCurveData(slice);
 }
 
-// ── RENDER STATS ──────────────────────────────────────
 function renderStats(){
   const s=stats();
   (document.getElementById("stat-cards")||{innerHTML:""}).innerHTML=`
@@ -1102,21 +971,15 @@ function renderStats(){
   renderCash(s.tot);
 }
 
-// ── RENDER CASH WIDGET ────────────────────────────────
 function renderCash(tot){
   const el=document.getElementById("sidebar-cash");
   const pctEl=document.getElementById("sidebar-cash-pct");
   if(el) el.textContent=usd(cash);
-  if(pctEl){
-    const p=tot>0?(cash/tot)*100:0;
-    pctEl.textContent=n2(p)+"% מהתיק";
-  }
-  // also update the modal cash display if open
+  if(pctEl){ const p=tot>0?(cash/tot)*100:0; pctEl.textContent=n2(p)+"% מהתיק"; }
   const mcel=document.getElementById("modal-cash");
   if(mcel) mcel.textContent=usd(cash);
 }
 
-// ── RENDER TABLE ──────────────────────────────────────
 function renderTable(){
   const tot=totP(),cashPct=tot>0?(cash/tot)*100:0;
   let html="";
@@ -1125,47 +988,26 @@ function renderTable(){
     const pnlP=inv>0?(pnlA/inv)*100:0,port=tot>0?(val/tot)*100:0;
     const dA=(h.dc||0)*h.sh,dP=h.pr>0?((h.dc||0)/h.pr)*100:0;
     const isProfit=pnlA>=0;
-    // Row left border color based on profit/loss
     const rowBorder=isProfit?"border-right:3px solid var(--grn)":"border-right:3px solid var(--red)";
     const rowBg=isProfit?"rgba(0,232,122,.025)":"rgba(255,58,110,.025)";
     html+="<tr id='tr-"+h.t+"' style='background:"+rowBg+";"+rowBorder+"'>"
-      +"<td style='text-align:right'>"
-        +"<span id='dot-"+h.t+"' style='width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--dim);margin-left:6px;transition:all .3s'></span>"
-        +"<span style='font-weight:700;color:var(--acc)'>"+h.t+"</span>"
-      +"</td>"
+      +"<td style='text-align:right'><span id='dot-"+h.t+"' style='width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--dim);margin-left:6px;transition:all .3s'></span><span style='font-weight:700;color:var(--acc)'>"+h.t+"</span></td>"
       +"<td style='font-size:10px;color:var(--mut);font-family:var(--f2)'>"+(h.buyDate||"—")+"</td>"
       +"<td>"+h.sh.toLocaleString()+"</td>"
       +"<td style='color:var(--mut)'>"+usd(h.avg)+"</td>"
       +"<td style='font-weight:600;color:var(--txt)' id='pr-"+h.t+"'>"+usd(h.pr)+"</td>"
       +"<td style='font-size:11px'>"+usd(inv)+"</td>"
       +"<td style='font-weight:600'>"+usd(val)+"</td>"
-      +"<td>"
-        +"<span style='color:"+clr(pnlA)+";font-weight:700;font-size:13px'>"+usd(pnlA)+"</span>"
-        +(isProfit?"<span style='font-size:9px;color:var(--grn);margin-right:4px'>▲</span>":"<span style='font-size:9px;color:var(--red);margin-right:4px'>▼</span>")
-      +"</td>"
-      +"<td>"
-        +"<span style='background:"+bg(pnlP)+";color:"+clr(pnlP)+";font-weight:800;font-size:12px;padding:3px 9px;border-radius:6px;border:1px solid "+(isProfit?"rgba(0,232,122,.3)":"rgba(255,58,110,.3)")+"'>"+pct(pnlP)+"</span>"
-      +"</td>"
-      +"<td>"
-        +"<div style='display:flex;align-items:center;justify-content:center;gap:5px'>"
-          +"<div style='width:36px;height:3px;border-radius:2px;background:var(--brd);overflow:hidden'>"
-            +"<div style='width:"+Math.min(100,port)+"%;height:100%;border-radius:2px;background:"+(isProfit?"var(--grn)":"var(--acc)")+"'></div>"
-          +"</div>"
-          +"<span style='font-size:10px;font-weight:700;color:"+(isProfit?"var(--grn)":"var(--txt)")+"'>"+n2(port)+"%</span>"
-        +"</div>"
-      +"</td>"
-      +"<td>"
-        +"<div style='font-size:11px;font-weight:600;color:"+clr(dA)+"'>"+usd(dA)+"</div>"
-        +"<div style='font-size:9px;color:"+clr(dP)+"'>"+pct(dP)+"</div>"
-      +"</td>"
+      +"<td><span style='color:"+clr(pnlA)+";font-weight:700;font-size:13px'>"+usd(pnlA)+"</span>"+(isProfit?"<span style='font-size:9px;color:var(--grn);margin-right:4px'>▲</span>":"<span style='font-size:9px;color:var(--red);margin-right:4px'>▼</span>")+"</td>"
+      +"<td><span style='background:"+bg(pnlP)+";color:"+clr(pnlP)+";font-weight:800;font-size:12px;padding:3px 9px;border-radius:6px;border:1px solid "+(isProfit?"rgba(0,232,122,.3)":"rgba(255,58,110,.3)")+"'>"+pct(pnlP)+"</span></td>"
+      +"<td><div style='display:flex;align-items:center;justify-content:center;gap:5px'><div style='width:36px;height:3px;border-radius:2px;background:var(--brd);overflow:hidden'><div style='width:"+Math.min(100,port)+"%;height:100%;border-radius:2px;background:"+(isProfit?"var(--grn)":"var(--acc)")+"'></div></div><span style='font-size:10px;font-weight:700;color:"+(isProfit?"var(--grn)":"var(--txt)")+"'>"+n2(port)+"%</span></div></td>"
+      +"<td><div style='font-size:11px;font-weight:600;color:"+clr(dA)+"'>"+usd(dA)+"</div><div style='font-size:9px;color:"+clr(dP)+"'>"+pct(dP)+"</div></td>"
       +"<td><span class='badge ba' style='font-family:var(--f2)'>"+h.sec+"</span></td>"
       +"</tr>";
   });
-  // CASH row
   html+="<tr style='background:rgba(245,197,24,.03)'>"
     +"<td style='text-align:right'><span style='width:6px;height:6px;border-radius:50%;display:inline-block;background:var(--gld);box-shadow:0 0 5px var(--gld);margin-left:6px'></span><span style='font-weight:700;color:var(--gld)'>CASH</span></td>"
-    +"<td style='color:var(--mut)'>—</td>"
-    +"<td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td>"
+    +"<td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td>"
     +"<td style='color:var(--mut)'>—</td><td style='font-weight:700;color:var(--gld)'>"+usd(cash)+"</td>"
     +"<td style='color:var(--mut)'>—</td><td style='color:var(--mut)'>—</td>"
     +"<td><div class='bar-w'><div class='bar-bg'><div class='bar-f' style='width:"+Math.min(100,cashPct)+"%;background:var(--gld)'></div></div><span style='font-size:10px;color:var(--mut)'>"+n2(cashPct)+"%</span></div></td>"
@@ -1176,11 +1018,9 @@ function renderTable(){
   (document.getElementById("pos-count")||{}).textContent=H.length+" פוזיציות";
 }
 
-// ── CHARTS ────────────────────────────────────────────
 function renderCurveData(pts){
   if(!pts||!pts.length) return;
-  const labels=pts.map(function(d){return d.lb;});
-  const data=pts.map(function(d){return d.v;});
+  const labels=pts.map(function(d){return d.lb;}),data=pts.map(function(d){return d.v;});
   const first=data[0]||0,last=data[data.length-1]||0,chg=last-first,chgP=first>0?(chg/first)*100:0;
   (document.getElementById("curve-chg")||{innerHTML:""}).innerHTML=
     "<div style='font-size:16px;font-weight:700;color:"+clr(chg)+";font-family:var(--f1)'>"+usd(chg)+"</div>"
@@ -1191,24 +1031,9 @@ function renderCurveData(pts){
   grad.addColorStop(0,isPos?"rgba(0,212,168,.28)":"rgba(255,58,110,.22)");
   grad.addColorStop(1,isPos?"rgba(0,212,168,.01)":"rgba(255,58,110,.01)");
   const lineColor=isPos?"#00d4a8":"#ff3a6e";
-  if(cChart)cChart.destroy();
-  // Thin out labels for large datasets
+  if(cChart) cChart.destroy();
   const maxTicks=Math.min(8,labels.length);
-  cChart=new Chart(ctx,{
-    type:"line",
-    data:{labels,datasets:[{data,borderColor:lineColor,borderWidth:2,backgroundColor:grad,fill:true,tension:.4,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:lineColor,pointHoverBorderColor:"#050911",pointHoverBorderWidth:2}]},
-    options:{
-      responsive:true,maintainAspectRatio:false,animation:{duration:400},
-      plugins:{
-        legend:{display:false},
-        tooltip:{mode:"index",intersect:false,backgroundColor:"#080e1c",borderColor:"#1e3050",borderWidth:1,titleColor:"#415570",bodyColor:lineColor,bodyFont:{family:"'JetBrains Mono'",weight:"700",size:13},titleFont:{family:"Heebo",size:10},callbacks:{label:function(c){return "  "+usd(c.raw);},title:function(l){return l[0];}}}
-      },
-      scales:{
-        x:{grid:{display:false},ticks:{color:"#415570",font:{family:"Heebo",size:9},maxRotation:0,maxTicksLimit:maxTicks}},
-        y:{position:"right",grid:{color:"rgba(22,33,53,.7)"},ticks:{color:"#415570",font:{family:"'JetBrains Mono'",size:9},callback:function(v){return "$"+(v/1000).toFixed(0)+"k";}}}
-      }
-    }
-  });
+  cChart=new Chart(ctx,{type:"line",data:{labels,datasets:[{data,borderColor:lineColor,borderWidth:2,backgroundColor:grad,fill:true,tension:.4,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:lineColor,pointHoverBorderColor:"#050911",pointHoverBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false,backgroundColor:"#080e1c",borderColor:"#1e3050",borderWidth:1,titleColor:"#415570",bodyColor:lineColor,bodyFont:{family:"'JetBrains Mono'",weight:"700",size:13},titleFont:{family:"Heebo",size:10},callbacks:{label:function(c){return "  "+usd(c.raw);},title:function(l){return l[0];}}}},scales:{x:{grid:{display:false},ticks:{color:"#415570",font:{family:"Heebo",size:9},maxRotation:0,maxTicksLimit:maxTicks}},y:{position:"right",grid:{color:"rgba(22,33,53,.7)"},ticks:{color:"#415570",font:{family:"'JetBrains Mono'",size:9},callback:function(v){return "$"+(v/1000).toFixed(0)+"k";}}}}}});
 }
 
 function renderCurve(){
@@ -1216,299 +1041,80 @@ function renderCurve(){
   renderCurveData(slice);
 }
 
-function getPieData(){
-  const tot=totP();
-  if(pieMode==="sector"){
-    const m={};H.forEach(h=>{m[h.sec]=(m[h.sec]||0)+h.sh*h.pr;});m["מזומן"]=cash;
-    return Object.entries(m).map(([n,v])=>({n,v:Math.round(v*100)/100,p:(v/tot)*100}));
-  }
-  const r=H.map(h=>({n:h.t,v:Math.round(h.sh*h.pr*100)/100,p:(h.sh*h.pr/tot)*100}));
-  r.push({n:"CASH",v:Math.round(cash*100)/100,p:(cash/tot)*100});
-  return r;
-}
-
-function renderPie(){
-  const data=getPieData();
-  const ctx=document.getElementById("pieChart").getContext("2d");
-  if(pChart)pChart.destroy();
-  pChart=new Chart(ctx,{type:"doughnut",data:{labels:data.map(d=>d.n),datasets:[{data:data.map(d=>d.v),backgroundColor:data.map((_,i)=>PAL[i%PAL.length]),borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:500},cutout:"60%",plugins:{legend:{display:false},tooltip:{backgroundColor:"#080e1c",borderColor:"#1e3050",borderWidth:1,callbacks:{label:c=>` ${usd(c.raw)} (${n2((c.raw/data.reduce((a,b)=>a+b.v,0))*100)}%)`}}}}});
-  (document.getElementById("pie-legend")||{innerHTML:""}).innerHTML=data.map((d,i)=>`<div class="pie-legend-row"><div style="display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:2px;background:${PAL[i%PAL.length]};flex-shrink:0"></div><span style="font-size:10px;color:var(--mut);font-family:var(--f2)">${d.n}</span></div><span style="font-size:10px;color:var(--txt);font-family:var(--f1)">${n2(d.p)}%</span></div>`).join("");
-}
-
-function setPieMode(m){
-  pieMode=m;
-  document.getElementById("ps-btn").className="pill"+(m==="sector"?" active":"");
-  document.getElementById("pt-btn").className="pill"+(m==="ticker"?" active":"");
-  renderPie();
-}
-
-// ── HISTORY ───────────────────────────────────────────
-// ── MARKET HOURS LOGIC (NYSE/NASDAQ) ─────────────────
-// NYSE: Mon-Fri 09:30–16:00 EST (UTC-5 / UTC-4 DST)
-// Israel time = EST+7 (winter) / EST+6 (summer)
-// We check in UTC: market open = 14:30–21:00 UTC (winter) / 13:30–20:00 UTC (summer)
 function isMarketOpen(){
-  const now   = new Date();
-  const day   = now.getUTCDay();          // 0=Sun,1=Mon...6=Sat
-  const month = now.getUTCMonth()+1;      // 1-12
-  const hour  = now.getUTCHours();
-  const min   = now.getUTCMinutes();
-  const mins  = hour*60+min;              // minutes since UTC midnight
-
-  // Weekend
+  const now=new Date(),day=now.getUTCDay(),month=now.getUTCMonth()+1,hour=now.getUTCHours(),min=now.getUTCMinutes(),mins=hour*60+min;
   if(day===0||day===6) return false;
-
-  // US DST: 2nd Sun Mar → 1st Sun Nov (approximate)
-  const isDST = (month>3&&month<11)||(month===3&&day>=8)||(month===11&&day<7);
-  const open  = isDST ? 13*60+30 : 14*60+30;   // UTC minutes
-  const close = isDST ? 20*60    : 21*60;
-
-  return mins>=open && mins<close;
+  const isDST=(month>3&&month<11)||(month===3&&day>=8)||(month===11&&day<7);
+  const open=isDST?13*60+30:14*60+30,close=isDST?20*60:21*60;
+  return mins>=open&&mins<close;
 }
 
 function marketStatusText(){
-  const now  = new Date();
-  const day  = now.getUTCDay();
-  if(day===0||day===6) return {open:false, label:"🔴 שוק סגור — סוף שבוע"};
-  if(isMarketOpen())   return {open:true,  label:"🟢 שוק פתוח עכשיו"};
-  return                      {open:false, label:"🔴 שוק סגור — מחוץ לשעות מסחר"};
+  const now=new Date(),day=now.getUTCDay();
+  if(day===0||day===6) return{open:false,label:"🔴 שוק סגור — סוף שבוע"};
+  if(isMarketOpen()) return{open:true,label:"🟢 שוק פתוח עכשיו"};
+  return{open:false,label:"🔴 שוק סגור — מחוץ לשעות מסחר"};
 }
 
-// ── CANCEL TRADE ──────────────────────────────────────
 function cancelTrade(id){
-  if(isMarketOpen()){
-    showToast("⛔ לא ניתן לבטל — השוק פתוח, הפקודה כבר בוצעה");
-    return;
-  }
+  if(isMarketOpen()){showToast("⛔ לא ניתן לבטל — השוק פתוח, הפקודה כבר בוצעה");return;}
   const tx=txns.find(function(t){return t.id===id;});
-  if(!tx){ showToast("עסקה לא נמצאה"); return; }
+  if(!tx){showToast("עסקה לא נמצאה");return;}
   if(!confirm("לבטל את העסקה? "+tx.t+" "+usd(tx.tot))){return;}
-
-  // Reverse the trade effect
   if(tx.type==="buy"){
-    // Remove shares, restore cash
     const h=H.find(function(x){return x.t===tx.t;});
     if(h){
       const newSh=Math.round((h.sh-tx.sh)*10000)/10000;
-      if(newSh<=0){
-        H=H.filter(function(x){return x.t!==tx.t;});
-      } else {
-        // Reverse weighted avg
-        const totalInv=h.sh*h.avg;
-        const cancelInv=tx.sh*tx.pr;
-        const remInv=totalInv-cancelInv;
-        h.avg=newSh>0?Math.round((remInv/newSh)*100)/100:0;
-        h.sh=newSh;
-      }
+      if(newSh<=0){H=H.filter(function(x){return x.t!==tx.t;});}
+      else{const totalInv=h.sh*h.avg,cancelInv=tx.sh*tx.pr,remInv=totalInv-cancelInv;h.avg=newSh>0?Math.round((remInv/newSh)*100)/100:0;h.sh=newSh;}
     }
     cash=Math.round((cash+tx.tot)*100)/100;
-  } else {
-    // Sell reversal: take back cash, restore shares
+  }else{
     cash=Math.round((cash-tx.tot)*100)/100;
     const h=H.find(function(x){return x.t===tx.t;});
-    if(h){ h.sh=Math.round((h.sh+tx.sh)*10000)/10000; }
-    else  { H.push({t:tx.t,sh:tx.sh,avg:tx.pr,pr:tx.pr,dc:0,sec:tx.sec||"לא מוגדר",buyDate:tx.date}); }
-    // Remove from sold if it was there
+    if(h){h.sh=Math.round((h.sh+tx.sh)*10000)/10000;}
+    else{H.push({t:tx.t,sh:tx.sh,avg:tx.pr,pr:tx.pr,dc:0,sec:tx.sec||"לא מוגדר",buyDate:tx.date});}
     sold=sold.filter(function(s){return !(s.t===tx.t&&Math.abs(s.sv-tx.tot)<0.01);});
   }
-
   txns=txns.filter(function(t){return t.id!==id;});
   showToast("↩️ עסקה בוטלה — "+tx.t+" "+usd(tx.tot));
-  renderAll();
-  renderHistory();
+  renderAll();renderHistory();
 }
 
 function renderHistory(){
   (document.getElementById("tx-count")||{}).textContent=txns.length+" עסקאות";
-  if(!txns.length){
-    (document.getElementById("tx-list")||{innerHTML:""}).innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:12px">🕐</div><div class="empty-txt" style="color:var(--mut)">אין עסקאות עדיין</div><div style="color:var(--dim);font-size:12px;margin-top:6px">לחץ "הוסף עסקה" להתחיל</div></div>';
-    return;
-  }
-
-  // Market status banner at top
+  if(!txns.length){(document.getElementById("tx-list")||{innerHTML:""}).innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:12px">🕐</div><div class="empty-txt" style="color:var(--mut)">אין עסקאות עדיין</div><div style="color:var(--dim);font-size:12px;margin-top:6px">לחץ "הוסף עסקה" להתחיל</div></div>';return;}
   const ms=marketStatusText();
-  const msBanner="<div style='display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 14px;border-radius:10px;background:"
-    +(ms.open?"rgba(0,232,122,.08)":"rgba(255,58,110,.06)")
-    +";border:1px solid "+(ms.open?"rgba(0,232,122,.25)":"rgba(255,58,110,.2)")+"'>"
-    +"<span style='font-size:13px;font-weight:700;color:"+(ms.open?"var(--grn)":"var(--mut)")+"'>"+ms.label+"</span>"
-    +(ms.open
-      ?"<span style='font-size:11px;color:var(--mut);font-family:var(--f2)'>ביטול עסקה אינו אפשרי בשעות המסחר</span>"
-      :"<span style='font-size:11px;color:var(--grn);font-family:var(--f2)'>✓ ניתן לבטל עסקאות כרגע</span>")
-    +"</div>";
-
-  const totPortfolio=totP();
-  const marketOpen=isMarketOpen();
-
-  // Today's date string in he-IL format for comparison
-  const todayStr=new Date().toLocaleDateString("he-IL");
-
+  const msBanner="<div style='display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 14px;border-radius:10px;background:"+(ms.open?"rgba(0,232,122,.08)":"rgba(255,58,110,.06)")+";border:1px solid "+(ms.open?"rgba(0,232,122,.25)":"rgba(255,58,110,.2)")+"'><span style='font-size:13px;font-weight:700;color:"+(ms.open?"var(--grn)":"var(--mut)")+"'>"+ms.label+"</span>"+(ms.open?"<span style='font-size:11px;color:var(--mut);font-family:var(--f2)'>ביטול עסקה אינו אפשרי בשעות המסחר</span>":"<span style='font-size:11px;color:var(--grn);font-family:var(--f2)'>✓ ניתן לבטל עסקאות כרגע</span>")+"</div>";
+  const totPortfolio=totP(),marketOpen=isMarketOpen(),todayStr=new Date().toLocaleDateString("he-IL");
   (document.getElementById("tx-list")||{innerHTML:""}).innerHTML=msBanner+txns.map(function(tx){
-    const holding=H.find(function(h){return h.t===tx.t;});
-    const isBuy=tx.type==="buy";
+    const holding=H.find(function(h){return h.t===tx.t;}),isBuy=tx.type==="buy";
     let pnlHtml="";
-    if(isBuy && holding){
-      const costBasis=holding.sh*holding.avg;
-      const curVal=holding.sh*holding.pr;
-      const pnlA=Math.round((curVal-costBasis)*100)/100;
-      const pnlP=costBasis>0?(pnlA/costBasis)*100:0;
-      const portPct=totPortfolio>0?(curVal/totPortfolio)*100:0;
-      const isProfit=pnlA>=0;
-      const pclr=isProfit?"var(--grn)":"var(--red)";
-      const pbg2=isProfit?"rgba(0,232,122,.1)":"rgba(255,58,110,.1)";
-      const pbrd=isProfit?"rgba(0,232,122,.25)":"rgba(255,58,110,.25)";
-      pnlHtml=""
-        +"<div style='display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap'>"
-          +"<div style='display:flex;align-items:center;gap:5px;background:"+pbg2+";border:1px solid "+pbrd+";border-radius:8px;padding:4px 10px'>"
-            +"<span style='font-size:10px;color:var(--mut)'>רווח/הפסד:</span>"
-            +"<span style='font-size:13px;font-weight:800;color:"+pclr+";font-family:var(--f1)'>"+(isProfit?"▲":"▼")+" "+usd(pnlA)+"</span>"
-          +"</div>"
-          +"<div style='display:flex;align-items:center;gap:5px;background:"+pbg2+";border:1px solid "+pbrd+";border-radius:8px;padding:4px 10px'>"
-            +"<span style='font-size:10px;color:var(--mut)'>%:</span>"
-            +"<span style='font-size:13px;font-weight:800;color:"+pclr+";font-family:var(--f1)'>"+pct(pnlP)+"</span>"
-          +"</div>"
-          +"<div style='display:flex;align-items:center;gap:5px;background:rgba(0,212,168,.08);border:1px solid rgba(0,212,168,.2);border-radius:8px;padding:4px 10px'>"
-            +"<span style='font-size:10px;color:var(--mut)'>נתח תיק:</span>"
-            +"<span style='font-size:13px;font-weight:800;color:var(--acc);font-family:var(--f1)'>"+n2(portPct)+"%</span>"
-          +"</div>"
-        +"</div>";
+    if(isBuy&&holding){
+      const costBasis=holding.sh*holding.avg,curVal=holding.sh*holding.pr,pnlA=Math.round((curVal-costBasis)*100)/100,pnlP=costBasis>0?(pnlA/costBasis)*100:0,portPct=totPortfolio>0?(curVal/totPortfolio)*100:0,isProfit=pnlA>=0;
+      const pclr=isProfit?"var(--grn)":"var(--red)",pbg2=isProfit?"rgba(0,232,122,.1)":"rgba(255,58,110,.1)",pbrd=isProfit?"rgba(0,232,122,.25)":"rgba(255,58,110,.25)";
+      pnlHtml="<div style='display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap'><div style='display:flex;align-items:center;gap:5px;background:"+pbg2+";border:1px solid "+pbrd+";border-radius:8px;padding:4px 10px'><span style='font-size:10px;color:var(--mut)'>רווח/הפסד:</span><span style='font-size:13px;font-weight:800;color:"+pclr+";font-family:var(--f1)'>"+(isProfit?"▲":"▼")+" "+usd(pnlA)+"</span></div><div style='display:flex;align-items:center;gap:5px;background:"+pbg2+";border:1px solid "+pbrd+";border-radius:8px;padding:4px 10px'><span style='font-size:10px;color:var(--mut)'>%:</span><span style='font-size:13px;font-weight:800;color:"+pclr+";font-family:var(--f1)'>"+pct(pnlP)+"</span></div><div style='display:flex;align-items:center;gap:5px;background:rgba(0,212,168,.08);border:1px solid rgba(0,212,168,.2);border-radius:8px;padding:4px 10px'><span style='font-size:10px;color:var(--mut)'>נתח תיק:</span><span style='font-size:13px;font-weight:800;color:var(--acc);font-family:var(--f1)'>"+n2(portPct)+"%</span></div></div>";
     }
-    const borderClr=isBuy
-      ? (holding?(holding.sh*holding.pr-holding.sh*holding.avg>=0?"var(--grn)":"var(--red)"):"var(--brd2)")
-      : "var(--red)";
-
-    // ── CANCEL BUTTON LOGIC ───────────────────────────
-    // Rule: only show cancel if:
-    //   1. Trade was added TODAY
-    //   2. Market is currently CLOSED
-    const isToday = tx.date===todayStr;
+    const borderClr=isBuy?(holding?(holding.sh*holding.pr-holding.sh*holding.avg>=0?"var(--grn)":"var(--red)"):"var(--brd2)"):"var(--red)";
+    const isToday=tx.date===todayStr;
     let cancelBtn="";
-    if(!isToday){
-      // Old trade — no cancel ever
-      cancelBtn="";
-    } else if(marketOpen){
-      // Today's trade but market is open — locked
-      cancelBtn="<span style='font-size:10px;color:var(--dim);white-space:nowrap;flex-shrink:0;padding:6px 10px;border:1px solid var(--dim);border-radius:8px'>🔒 שוק פתוח</span>";
-    } else {
-      // Today's trade + market closed — allow cancel
-      cancelBtn="<button onclick='cancelTrade("+tx.id+")' style='padding:6px 12px;border:1px solid rgba(255,58,110,.4);border-radius:8px;background:rgba(255,58,110,.08);color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f2);white-space:nowrap;flex-shrink:0'>↩ ביטול</button>";
-    }
-
-    return "<div class='tx-card' style='margin-bottom:12px;border-right:3px solid "+borderClr+";flex-direction:column;align-items:stretch;gap:0'>"
-      +"<div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px'>"
-        +"<div style='flex:1'>"
-          +"<div style='display:flex;align-items:center;gap:8px'>"
-            +"<span style='font-weight:800;color:var(--acc);font-family:var(--f1);font-size:16px'>"+tx.t+"</span>"
-            +"<span class='badge "+(isBuy?"bgrn":"bred")+"'>"+(isBuy?"קנייה":"מכירה")+"</span>"
-          +"</div>"
-          +"<div style='font-size:11px;color:var(--mut);margin-top:3px;font-family:var(--f2)'>"+tx.date+" · "+tx.time+"</div>"
-        +"</div>"
-        +"<div style='display:flex;align-items:flex-start;gap:10px'>"
-          +"<div style='text-align:left'>"
-            +"<div style='font-size:16px;font-weight:700;font-family:var(--f1)'>"+usd(tx.tot)+"</div>"
-            +"<div style='font-size:11px;color:var(--mut);font-family:var(--f1)'>"+tx.sh.toLocaleString()+" × "+usd(tx.pr)+"</div>"
-          +"</div>"
-          +cancelBtn
-        +"</div>"
-      +"</div>"
-      +pnlHtml
-      +"</div>";
+    if(!isToday){cancelBtn="";}
+    else if(marketOpen){cancelBtn="<span style='font-size:10px;color:var(--dim);white-space:nowrap;flex-shrink:0;padding:6px 10px;border:1px solid var(--dim);border-radius:8px'>🔒 שוק פתוח</span>";}
+    else{cancelBtn="<button onclick='cancelTrade("+tx.id+")' style='padding:6px 12px;border:1px solid rgba(255,58,110,.4);border-radius:8px;background:rgba(255,58,110,.08);color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f2);white-space:nowrap;flex-shrink:0'>↩ ביטול</button>";}
+    return "<div class='tx-card' style='margin-bottom:12px;border-right:3px solid "+borderClr+";flex-direction:column;align-items:stretch;gap:0'><div style='display:flex;justify-content:space-between;align-items:flex-start;gap:8px'><div style='flex:1'><div style='display:flex;align-items:center;gap:8px'><span style='font-weight:800;color:var(--acc);font-family:var(--f1);font-size:16px'>"+tx.t+"</span><span class='badge "+(isBuy?"bgrn":"bred")+"'>"+(isBuy?"קנייה":"מכירה")+"</span></div><div style='font-size:11px;color:var(--mut);margin-top:3px;font-family:var(--f2)'>"+tx.date+" · "+tx.time+"</div></div><div style='display:flex;align-items:flex-start;gap:10px'><div style='text-align:left'><div style='font-size:16px;font-weight:700;font-family:var(--f1)'>"+usd(tx.tot)+"</div><div style='font-size:11px;color:var(--mut);font-family:var(--f1)'>"+tx.sh.toLocaleString()+" × "+usd(tx.pr)+"</div></div>"+cancelBtn+"</div></div>"+pnlHtml+"</div>";
   }).join("");
 }
 
-// ── REALIZED ──────────────────────────────────────────
 function renderRealized(){
   const sEl=document.getElementById("real-stats"),lEl=document.getElementById("sold-list");
   if(!sold.length){sEl.style.display="none";lEl.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:12px">📊</div><div style="color:var(--mut)">אין עסקאות שנסגרו</div><div style="color:var(--dim);font-size:12px;margin-top:6px">מכירת פוזיציה תופיע כאן</div></div>';return;}
-
   const taxR=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
-  const yr=new Date().getFullYear();
-
-  // ── OFFSET CALCULATION (per year) ──────────────────────
-  // Split into current year and prior years
-  const thisYear=sold.filter(p=>(p.year||0)===yr||!p.year);
-  const allPrf=sold.reduce((s,p)=>s+p.prf,0);
-  const totalGains=sold.filter(p=>p.prf>0).reduce((s,p)=>s+p.prf,0);
-  const totalLosses=Math.abs(sold.filter(p=>p.prf<0).reduce((s,p)=>s+p.prf,0));
-  const netTaxable=Math.max(0,allPrf); // losses offset gains
-  const taxDue=Math.round(netTaxable*(taxR/100)*100)/100;
-  const taxWithoutOffset=Math.round(totalGains*(taxR/100)*100)/100;
-  const savedByOffset=Math.round((taxWithoutOffset-taxDue)*100)/100;
-  const netAfterTax=Math.round((allPrf-taxDue)*100)/100;
-
+  const allPrf=sold.reduce((s,p)=>s+p.prf,0),totalGains=sold.filter(p=>p.prf>0).reduce((s,p)=>s+p.prf,0),totalLosses=Math.abs(sold.filter(p=>p.prf<0).reduce((s,p)=>s+p.prf,0)),netTaxable=Math.max(0,allPrf),taxDue=Math.round(netTaxable*(taxR/100)*100)/100,taxWithoutOffset=Math.round(totalGains*(taxR/100)*100)/100,savedByOffset=Math.round((taxWithoutOffset-taxDue)*100)/100,netAfterTax=Math.round((allPrf-taxDue)*100)/100;
   sEl.style.display="grid";
-  sEl.innerHTML=`
-    <div class="stat-card ${allPrf>=0?"glow-g":"glow-r"}">
-      <div class="stat-lbl">רווח/הפסד כולל<span class="stat-emoji">${allPrf>=0?"📈":"📉"}</span></div>
-      <div class="stat-val" style="color:${clr(allPrf)}">${usd(allPrf)}</div>
-      <div class="stat-sub" style="font-size:10px">
-        <span style="color:var(--grn)">רווחים: ${usd(totalGains)}</span> &nbsp;|&nbsp;
-        <span style="color:var(--red)">הפסדים: ${usd(-totalLosses)}</span>
-      </div>
-    </div>
-    <div class="stat-card ${netAfterTax>=0?"glow-g":"glow-r"}">
-      <div class="stat-lbl">נטו לאחר מס<span class="stat-emoji">💰</span></div>
-      <div class="stat-val" style="color:${clr(netAfterTax)}">${usd(netAfterTax)}</div>
-      <div class="stat-sub">אחרי תשלום ${usd(taxDue)} מס</div>
-    </div>
-    <div class="stat-card" style="grid-column:1/-1;background:rgba(0,0,0,.2);border:1px solid rgba(245,197,24,.25)">
-      <div style="font-size:12px;font-weight:700;color:var(--gld);margin-bottom:10px">🏛️ חישוב מס עם קיזוז — כמו IBI / מגדל</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div style="background:var(--sur);border-radius:9px;padding:10px 12px">
-          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">סה"כ רווחים</div>
-          <div style="font-size:15px;font-weight:700;color:var(--grn);font-family:var(--f1)">${usd(totalGains)}</div>
-        </div>
-        <div style="background:var(--sur);border-radius:9px;padding:10px 12px">
-          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">קיזוז הפסדים</div>
-          <div style="font-size:15px;font-weight:700;color:var(--red);font-family:var(--f1)">-${usd(totalLosses)}</div>
-        </div>
-        <div style="background:var(--sur);border-radius:9px;padding:10px 12px;border:1px solid rgba(245,197,24,.2)">
-          <div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">בסיס חיוב למס</div>
-          <div style="font-size:15px;font-weight:700;color:var(--gld);font-family:var(--f1)">${usd(netTaxable)}</div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:var(--sur);border-radius:9px;gap:12px">
-        <div>
-          <span style="font-size:11px;color:var(--mut)">מס ללא קיזוז: </span>
-          <span style="font-size:12px;color:var(--red);font-family:var(--f1);text-decoration:line-through">${usd(taxWithoutOffset)}</span>
-        </div>
-        <div style="font-size:18px">➜</div>
-        <div>
-          <span style="font-size:11px;color:var(--mut)">מס אחרי קיזוז: </span>
-          <span style="font-size:14px;font-weight:700;color:var(--red);font-family:var(--f1)">${usd(taxDue)}</span>
-        </div>
-        ${savedByOffset>0?`<div style="background:rgba(0,232,122,.1);border:1px solid rgba(0,232,122,.25);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--grn);font-weight:700">חסכת: ${usd(savedByOffset)} 🎉</div>`:""}
-      </div>
-    </div>`;
-
-  // Individual trade cards
-  lEl.innerHTML=sold.map(p=>`
-    <div class="sold-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-weight:700;color:var(--acc);font-family:var(--f1);font-size:16px">${p.t}</span>
-          <span class="badge ${p.prf>=0?"bgrn":"bred"}">${p.prf>=0?"רווח":"הפסד"}</span>
-        </div>
-        <span style="font-size:11px;color:var(--mut)">${p.date}</span>
-      </div>
-      <div class="sold-grid">
-        <div class="sold-item"><div class="sold-lbl">השקעה</div><div class="sold-val" style="color:var(--mut)">${usd(p.inv)}</div></div>
-        <div class="sold-item"><div class="sold-lbl">ערך מכירה</div><div class="sold-val">${usd(p.sv)}</div></div>
-        <div class="sold-item"><div class="sold-lbl">${p.prf>=0?"רווח גולמי":"הפסד (מקוזז)"}</div>
-          <div class="sold-val" style="color:${clr(p.prf)}">${usd(p.prf)}</div>
-        </div>
-        <div class="sold-item" style="${p.prf<0?"border:1px solid rgba(0,232,122,.2)":""}">
-          <div class="sold-lbl">${p.prf<0?"תרומה לקיזוז":"מס יחסי"}</div>
-          <div class="sold-val" style="color:${p.prf<0?"var(--grn)":"var(--red)"}">
-            ${p.prf<0?usd(Math.abs(p.prf)*(taxR/100))+" ✅":usd(Math.round(p.prf*(taxR/100)*100)/100)}
-          </div>
-        </div>
-      </div>
-    </div>`).join("");
+  sEl.innerHTML=`<div class="stat-card ${allPrf>=0?"glow-g":"glow-r"}"><div class="stat-lbl">רווח/הפסד כולל<span class="stat-emoji">${allPrf>=0?"📈":"📉"}</span></div><div class="stat-val" style="color:${clr(allPrf)}">${usd(allPrf)}</div><div class="stat-sub" style="font-size:10px"><span style="color:var(--grn)">רווחים: ${usd(totalGains)}</span> &nbsp;|&nbsp; <span style="color:var(--red)">הפסדים: ${usd(-totalLosses)}</span></div></div><div class="stat-card ${netAfterTax>=0?"glow-g":"glow-r"}"><div class="stat-lbl">נטו לאחר מס<span class="stat-emoji">💰</span></div><div class="stat-val" style="color:${clr(netAfterTax)}">${usd(netAfterTax)}</div><div class="stat-sub">אחרי תשלום ${usd(taxDue)} מס</div></div><div class="stat-card" style="grid-column:1/-1;background:rgba(0,0,0,.2);border:1px solid rgba(245,197,24,.25)"><div style="font-size:12px;font-weight:700;color:var(--gld);margin-bottom:10px">🏛️ חישוב מס עם קיזוז — כמו IBI / מגדל</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="background:var(--sur);border-radius:9px;padding:10px 12px"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">סה"כ רווחים</div><div style="font-size:15px;font-weight:700;color:var(--grn);font-family:var(--f1)">${usd(totalGains)}</div></div><div style="background:var(--sur);border-radius:9px;padding:10px 12px"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">קיזוז הפסדים</div><div style="font-size:15px;font-weight:700;color:var(--red);font-family:var(--f1)">-${usd(totalLosses)}</div></div><div style="background:var(--sur);border-radius:9px;padding:10px 12px;border:1px solid rgba(245,197,24,.2)"><div style="font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">בסיס חיוב למס</div><div style="font-size:15px;font-weight:700;color:var(--gld);font-family:var(--f1)">${usd(netTaxable)}</div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:var(--sur);border-radius:9px;gap:12px"><div><span style="font-size:11px;color:var(--mut)">מס ללא קיזוז: </span><span style="font-size:12px;color:var(--red);font-family:var(--f1);text-decoration:line-through">${usd(taxWithoutOffset)}</span></div><div style="font-size:18px">➜</div><div><span style="font-size:11px;color:var(--mut)">מס אחרי קיזוז: </span><span style="font-size:14px;font-weight:700;color:var(--red);font-family:var(--f1)">${usd(taxDue)}</span></div>${savedByOffset>0?`<div style="background:rgba(0,232,122,.1);border:1px solid rgba(0,232,122,.25);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--grn);font-weight:700">חסכת: ${usd(savedByOffset)} 🎉</div>`:""}</div></div>`;
+  lEl.innerHTML=sold.map(p=>`<div class="sold-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="display:flex;align-items:center;gap:8px"><span style="font-weight:700;color:var(--acc);font-family:var(--f1);font-size:16px">${p.t}</span><span class="badge ${p.prf>=0?"bgrn":"bred"}">${p.prf>=0?"רווח":"הפסד"}</span></div><span style="font-size:11px;color:var(--mut)">${p.date}</span></div><div class="sold-grid"><div class="sold-item"><div class="sold-lbl">השקעה</div><div class="sold-val" style="color:var(--mut)">${usd(p.inv)}</div></div><div class="sold-item"><div class="sold-lbl">ערך מכירה</div><div class="sold-val">${usd(p.sv)}</div></div><div class="sold-item"><div class="sold-lbl">${p.prf>=0?"רווח גולמי":"הפסד (מקוזז)"}</div><div class="sold-val" style="color:${clr(p.prf)}">${usd(p.prf)}</div></div><div class="sold-item" style="${p.prf<0?"border:1px solid rgba(0,232,122,.2)":""}"><div class="sold-lbl">${p.prf<0?"תרומה לקיזוז":"מס יחסי"}</div><div class="sold-val" style="color:${p.prf<0?"var(--grn)":"var(--red)"}">${p.prf<0?usd(Math.abs(p.prf)*(taxR/100))+" ✅":usd(Math.round(p.prf*(taxR/100)*100)/100)}</div></div></div></div>`).join("");
 }
 
-// ── LIVE PRICE FETCH — Finnhub API ────────────────────
-// מחליף את Yahoo Finance ב-Finnhub.
-// הדבק את ה-API key שלך בשורה הבאה:
 var FINNHUB_API_KEY = "d70kophr01ql6rnvlhp0d70kophr01ql6rnvlhpg";
 
 async function fetchSingleFinnhub(symbol){
@@ -1520,86 +1126,47 @@ async function fetchSingleFinnhub(symbol){
     clearTimeout(tid);
     if(!r.ok) return null;
     const j=await r.json();
-    // j.c = current price, j.d = change, j.dp = change percent
     if(!j||!j.c||j.c===0) return null;
-    return {price: j.c, change: j.d||0};
-  }catch(e){ clearTimeout(tid); return null; }
+    return{price:j.c,change:j.d||0};
+  }catch(e){clearTimeout(tid);return null;}
 }
 
 async function fetchLivePrices(){
-  const btn=document.getElementById("refresh-btn");
-  const updEl=document.getElementById("last-upd");
-  btn.textContent="⏳ מושך מחירים...";
-  btn.disabled=true;
+  const btn=document.getElementById("refresh-btn"),updEl=document.getElementById("last-upd");
+  btn.textContent="⏳ מושך מחירים...";btn.disabled=true;
   updEl.textContent="מתחבר ל-Finnhub...";
-
   if(!FINNHUB_API_KEY||FINNHUB_API_KEY==="YOUR_FINNHUB_API_KEY"){
     if(updEl) updEl.innerHTML="<span style='color:var(--red)'>⚠ יש להגדיר FINNHUB_API_KEY בקוד</span>";
-    btn.textContent="🔄 מחירים חיים";
-    btn.disabled=false;
-    return;
+    btn.textContent="🔄 מחירים חיים";btn.disabled=false;return;
   }
-
   const symbols=[...new Set(H.map(h=>h.t))];
-  // שולף כל מניה בנפרד (Finnhub free tier לא תומך batch)
   const results=await Promise.all(symbols.map(s=>fetchSingleFinnhub(s)));
-
   const qmap={};
-  symbols.forEach((s,i)=>{ if(results[i]) qmap[s]=results[i]; });
-
+  symbols.forEach((s,i)=>{if(results[i]) qmap[s]=results[i];});
   const gotAny=Object.keys(qmap).length>0;
-
   if(gotAny){
-    const prevPrices={};
-    H.forEach(h=>{ prevPrices[h.t]=h.pr; });
-
-    H=H.map(h=>{
-      const q=qmap[h.t];
-      if(!q) return h;
-      return{
-        ...h,
-        pr: Math.round(q.price*100)/100,
-        dc: Math.round(q.change*100)/100
-      };
-    });
-
+    const prevPrices={};H.forEach(h=>{prevPrices[h.t]=h.pr;});
+    H=H.map(h=>{const q=qmap[h.t];if(!q) return h;return{...h,pr:Math.round(q.price*100)/100,dc:Math.round(q.change*100)/100};});
     H.forEach(h=>{
-      const prev=prevPrices[h.t];
-      const row=document.getElementById("tr-"+h.t);
-      const dot=document.getElementById("dot-"+h.t);
-      const up=h.pr>=prev;
+      const prev=prevPrices[h.t],row=document.getElementById("tr-"+h.t),dot=document.getElementById("dot-"+h.t),up=h.pr>=prev;
       if(row){row.style.animation="none";void row.offsetWidth;row.style.animation=up?"flashG .7s ease":"flashR .7s ease";}
       if(dot){dot.style.background=up?"var(--grn)":"var(--red)";dot.style.boxShadow="0 0 5px "+(up?"var(--grn)":"var(--red)");}
       setTimeout(()=>{if(row)row.style.animation="";if(dot){dot.style.background="var(--dim)";dot.style.boxShadow="none";}},900);
     });
-
-    fullCurveData=genFullCurve(); curveData=getSlice(curveRange);
+    fullCurveData=genFullCurve();curveData=getSlice(curveRange);
     const now=new Date();
     if(updEl) updEl.innerHTML="<span style='color:var(--grn)'>✓ עודכן בהצלחה — Finnhub</span> &nbsp;·&nbsp; "+now.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-    btn.textContent="🔄 מחירים חיים";
-    btn.disabled=false;
+    btn.textContent="🔄 מחירים חיים";btn.disabled=false;
     renderStats();renderTable();renderCurve();
-
   }else{
-    const now=new Date();
-    const isWeekend=now.getDay()===5||now.getDay()===6;
-    const hour=now.getHours();
-    const marketHint=(isWeekend||hour<9||hour>=24)?" (השוק סגור כעת)":" — בדוק את ה-API key";
+    const now=new Date(),isWeekend=now.getDay()===5||now.getDay()===6,hour=now.getHours(),marketHint=(isWeekend||hour<9||hour>=24)?" (השוק סגור כעת)":" — בדוק את ה-API key";
     if(updEl) updEl.innerHTML="<span style='color:var(--gld)'>⚠ מחירים אחרונים ידועים"+marketHint+"</span>";
-    btn.textContent="🔄 נסה שוב";
-    btn.disabled=false;
+    btn.textContent="🔄 נסה שוב";btn.disabled=false;
   }
 }
 
-function refreshPrices(){
-  fetchLivePrices();
-}
+function refreshPrices(){fetchLivePrices();}
 
-function refreshPrices(){
-  fetchLivePrices();
-}
-
-// ── MODAL ─────────────────────────────────────────────
 function openModal(){
   document.getElementById("modal-overlay").classList.add("open");
   (document.getElementById("modal-cash")||{}).textContent=usd(cash);
@@ -1621,7 +1188,6 @@ function setType(t){
   document.getElementById("btn-sell").className="trade-btn"+(t==="sell"?" sell-on":"");
   const lbl=document.getElementById("prev-total-lbl");
   if(lbl) lbl.textContent=t==="sell"?"סכום מכירה (ברוטו)":"סכום עסקה";
-  // hide tax row when switching type
   const txRow=document.getElementById("prev-tax-row");
   if(txRow&&t==="buy") txRow.style.display="none";
   updPrev();
@@ -1633,77 +1199,43 @@ function onTicker(){
   const box=document.getElementById("sugg-box");
   if(v.length>0){
     const m=TICKERS.filter(t=>t.startsWith(v)&&t!==v).slice(0,5);
-    if(m.length){
-      box.innerHTML=m.map(s=>`<div class="sugg-item" ontouchstart="this.style.background='var(--sur)'" ontouchend="pickSugg('${s}')" onclick="pickSugg('${s}')"><span style="font-weight:700">${s}</span>${SEC[s]?`<span style="font-size:11px;color:var(--acc);font-family:var(--f2)">${SEC[s]}</span>`:""}</div>`).join("");
-      box.classList.add("open");
-    }else{box.classList.remove("open");}
+    if(m.length){box.innerHTML=m.map(s=>`<div class="sugg-item" ontouchstart="this.style.background='var(--sur)'" ontouchend="pickSugg('${s}')" onclick="pickSugg('${s}')"><span style="font-weight:700">${s}</span>${SEC[s]?`<span style="font-size:11px;color:var(--acc);font-family:var(--f2)">${SEC[s]}</span>`:""}</div>`).join("");box.classList.add("open");}
+    else{box.classList.remove("open");}
     const ex=H.find(h=>h.t===v);
-    if(ex&&!document.getElementById("price-inp").value)document.getElementById("price-inp").value=ex.pr;
+    if(ex&&!document.getElementById("price-inp").value) document.getElementById("price-inp").value=ex.pr;
   }else{box.classList.remove("open");}
   updPrev();
 }
-function pickSugg(t){
-  document.getElementById("ticker-inp").value=t;
-  document.getElementById("sugg-box").classList.remove("open");
-  const ex=H.find(h=>h.t===t);
-  if(ex&&!document.getElementById("price-inp").value)document.getElementById("price-inp").value=ex.pr;
-  updPrev();
-}
+function pickSugg(t){document.getElementById("ticker-inp").value=t;document.getElementById("sugg-box").classList.remove("open");const ex=H.find(h=>h.t===t);if(ex&&!document.getElementById("price-inp").value) document.getElementById("price-inp").value=ex.pr;updPrev();}
 function hideSugg(){setTimeout(()=>document.getElementById("sugg-box").classList.remove("open"),200);}
 
 function updPrev(){
-  const sh=parseFloat(document.getElementById("shares-inp").value);
-  const pr=parseFloat(document.getElementById("price-inp").value);
-  const pb=document.getElementById("preview-box");
-  const em=document.getElementById("err-msg");
-  const pw=document.getElementById("prog-w");
+  const sh=parseFloat(document.getElementById("shares-inp").value),pr=parseFloat(document.getElementById("price-inp").value);
+  const pb=document.getElementById("preview-box"),em=document.getElementById("err-msg"),pw=document.getElementById("prog-w");
   if(!isNaN(sh)&&!isNaN(pr)&&sh>0&&pr>0){
-    const tot=sh*pr;
-    const taxR=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
-    let nc,displayTotal;
-    if(tradeType==="buy"){
-      nc=cash-tot; displayTotal=tot;
-    }else{
-      // OFFSET logic: tax is on NET across all closed trades
+    const tot=sh*pr,taxR=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
+    let nc;
+    if(tradeType==="buy"){nc=cash-tot;}
+    else{
       const ex=H.find(h=>h.t===document.getElementById("ticker-inp").value.trim());
-      const inv=ex?sh*ex.avg:0;
-      const thisPrf=tot-inv;
-      const existingNet=sold.reduce((s,p)=>s+p.prf,0);
-      const newNet=existingNet+thisPrf;
+      const inv=ex?sh*ex.avg:0,thisPrf=tot-inv,existingNet=sold.reduce((s,p)=>s+p.prf,0),newNet=existingNet+thisPrf;
       const taxR2=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
-      const newTaxDue=newNet>0?Math.round(newNet*(taxR2/100)*100)/100:0;
-      const oldTaxDue=existingNet>0?Math.round(existingNet*(taxR2/100)*100)/100:0;
+      const newTaxDue=newNet>0?Math.round(newNet*(taxR2/100)*100)/100:0,oldTaxDue=existingNet>0?Math.round(existingNet*(taxR2/100)*100)/100:0;
       const marginalTax=Math.max(0,newTaxDue-oldTaxDue);
-      nc=Math.round((cash+tot)*100)/100; // full gross to cash
-      displayTotal=tot;
-      // store for display below
-      window._sellPreviewTax=marginalTax;
-      window._sellPreviewPrf=thisPrf;
+      nc=Math.round((cash+tot)*100)/100;
+      window._sellPreviewTax=marginalTax;window._sellPreviewPrf=thisPrf;
     }
     const ins=tradeType==="buy"&&tot>cash;
-    (document.getElementById("prev-total")||{}).textContent=tradeType==="sell"?usd(tot):usd(tot);
+    (document.getElementById("prev-total")||{}).textContent=usd(tot);
     const cael=document.getElementById("prev-cash");cael.textContent=usd(nc);cael.style.color=nc<0?"var(--red)":"var(--grn)";
     pb.classList.add("vis");
     if(tradeType==="buy"){
-      pw.style.display="flex";
-      const p=Math.min(100,(tot/cash)*100);
-      document.getElementById("prog-f").style.width=p+"%";
-      (document.getElementById("prog-lb")||{}).textContent=n2(p)+"% מהמזומן";
-      // hide sell-tax row
-      const txRow=document.getElementById("prev-tax-row");
-      if(txRow) txRow.style.display="none";
+      pw.style.display="flex";const p=Math.min(100,(tot/cash)*100);document.getElementById("prog-f").style.width=p+"%";(document.getElementById("prog-lb")||{}).textContent=n2(p)+"% מהמזומן";
+      const txRow=document.getElementById("prev-tax-row");if(txRow) txRow.style.display="none";
     }else{
       pw.style.display="none";
-      // show estimated marginal tax from offset
       const txRow=document.getElementById("prev-tax-row");
-      if(txRow){
-        const mt=window._sellPreviewTax||0;
-        const prf=window._sellPreviewPrf||0;
-        txRow.style.display="block";
-        txRow.innerHTML=prf>=0
-          ? '<div style="font-size:11px;color:var(--mut);margin-top:6px;padding:8px 10px;background:rgba(255,58,110,.07);border-radius:8px;border:1px solid rgba(255,58,110,.2)">\u{1F3DB}\uFE0F \u05D7\u05D1\u05D5\u05EA \u05DE\u05E1 \u05E9\u05D5\u05DC\u05D9\u05EA (\u05E7\u05D9\u05D6\u05D5\u05D6): <span style="color:var(--red);font-weight:700;font-family:var(--f1)">'+usd(mt)+'</span> \u2014 \u05D9\u05E9\u05D5\u05DC\u05DD \u05D1\u05E1\u05D5\u05E3 \u05E9\u05E0\u05D4</div>'
-          : '<div style="font-size:11px;color:var(--grn);margin-top:6px;padding:8px 10px;background:rgba(0,232,122,.07);border-radius:8px;border:1px solid rgba(0,232,122,.2)">\u2705 \u05D4\u05E4\u05E1\u05D3 \u05D6\u05D4 \u05DE\u05E7\u05D5\u05D6\u05D6 \u05DB\u05E0\u05D2\u05D3 \u05E8\u05D5\u05D5\u05D7\u05D9\u05DD \u2014 \u05D7\u05D9\u05E1\u05DB\u05D5\u05DF \u05D1\u05DE\u05E1: <span style="font-weight:700;font-family:var(--f1)">'+usd(Math.abs(mt))+'</span></div>';
-      }
+      if(txRow){const mt=window._sellPreviewTax||0,prf=window._sellPreviewPrf||0;txRow.style.display="block";txRow.innerHTML=prf>=0?'<div style="font-size:11px;color:var(--mut);margin-top:6px;padding:8px 10px;background:rgba(255,58,110,.07);border-radius:8px;border:1px solid rgba(255,58,110,.2)">🏛️ חבות מס שולית (קיזוז): <span style="color:var(--red);font-weight:700;font-family:var(--f1)">'+usd(mt)+'</span> — ישולם בסוף שנה</div>':'<div style="font-size:11px;color:var(--grn);margin-top:6px;padding:8px 10px;background:rgba(0,232,122,.07);border-radius:8px;border:1px solid rgba(0,232,122,.2)">✅ הפסד זה מקוזז כנגד רווחים — חיסכון במס: <span style="font-weight:700;font-family:var(--f1)">'+usd(Math.abs(mt))+'</span></div>';}
     }
     if(ins){em.textContent="⚠️ אין מספיק מזומן — חסרים "+usd(tot-cash);em.style.display="block";}
     else em.style.display="none";
@@ -1712,24 +1244,16 @@ function updPrev(){
 }
 
 function updSubmit(){
-  const tk=document.getElementById("ticker-inp").value.trim();
-  const sh=parseFloat(document.getElementById("shares-inp").value);
-  const pr=parseFloat(document.getElementById("price-inp").value);
-  const tot=sh*pr,btn=document.getElementById("submit-btn");
+  const tk=document.getElementById("ticker-inp").value.trim(),sh=parseFloat(document.getElementById("shares-inp").value),pr=parseFloat(document.getElementById("price-inp").value),tot=sh*pr,btn=document.getElementById("submit-btn");
   const ok=tk.length>0&&sh>0&&pr>0&&!(tradeType==="buy"&&tot>cash);
-  btn.disabled=!ok;
-  btn.className=ok?(tradeType==="buy"?"rb":"rs"):"";
+  btn.disabled=!ok;btn.className=ok?(tradeType==="buy"?"rb":"rs"):"";
   btn.textContent=ok?`✓ ${tradeType==="buy"?"אשר קנייה":"אשר מכירה"} — ${usd(tot)}`:"הזן פרטי עסקה לביצוע";
 }
 
 function doTrade(){
-  const tk=document.getElementById("ticker-inp").value.trim();
-  const sh=parseFloat(document.getElementById("shares-inp").value);
-  const pr=parseFloat(document.getElementById("price-inp").value);
-  if(!tk||isNaN(sh)||isNaN(pr)||sh<=0||pr<=0)return;
-  const tot=Math.round(sh*pr*100)/100;
-  const now=new Date();
-  const sec=SEC[tk]||"לא מוגדר";
+  const tk=document.getElementById("ticker-inp").value.trim(),sh=parseFloat(document.getElementById("shares-inp").value),pr=parseFloat(document.getElementById("price-inp").value);
+  if(!tk||isNaN(sh)||isNaN(pr)||sh<=0||pr<=0) return;
+  const tot=Math.round(sh*pr*100)/100,now=new Date(),sec=SEC[tk]||"לא מוגדר";
   txns.unshift({id:Date.now(),type:tradeType,t:tk,sh,pr,tot,sec,date:now.toLocaleDateString("he-IL"),time:now.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})});
   if(tradeType==="buy"){
     const ex=H.find(h=>h.t===tk);
@@ -1739,50 +1263,28 @@ function doTrade(){
   }else{
     const ex=H.find(h=>h.t===tk);
     if(ex){
-      const rem=Math.round((ex.sh-sh)*10000)/10000;
-      const inv=sh*ex.avg;
-      const prf=Math.round((tot-inv)*100)/100;
-      if(rem<=0){
-        // full close
-        const fullInv=Math.round(ex.sh*ex.avg*100)/100;
-        const fullPrf=Math.round((tot-fullInv)*100)/100;
-        // store prf only — tax calculated at portfolio level via offset
-        sold.unshift({t:tk,sh:ex.sh,inv:fullInv,sv:Math.round(tot*100)/100,sp:pr,prf:fullPrf,date:now.toLocaleDateString("he-IL"),year:now.getFullYear()});
-        H=H.filter(h=>h.t!==tk);
-      }else{
-        ex.sh=rem;
-        // partial sell
-        const partInv=Math.round(inv*100)/100;
-        sold.unshift({t:tk+" (חלקי)",sh,inv:partInv,sv:Math.round(tot*100)/100,sp:pr,prf,date:now.toLocaleDateString("he-IL"),year:now.getFullYear()});
-      }
-      // ★ CASH: receive FULL gross proceeds — tax is settled at year-end (offset logic)
+      const rem=Math.round((ex.sh-sh)*10000)/10000,inv=sh*ex.avg,prf=Math.round((tot-inv)*100)/100;
+      if(rem<=0){const fullInv=Math.round(ex.sh*ex.avg*100)/100,fullPrf=Math.round((tot-fullInv)*100)/100;sold.unshift({t:tk,sh:ex.sh,inv:fullInv,sv:Math.round(tot*100)/100,sp:pr,prf:fullPrf,date:now.toLocaleDateString("he-IL"),year:now.getFullYear()});H=H.filter(h=>h.t!==tk);}
+      else{ex.sh=rem;const partInv=Math.round(inv*100)/100;sold.unshift({t:tk+" (חלקי)",sh,inv:partInv,sv:Math.round(tot*100)/100,sp:pr,prf,date:now.toLocaleDateString("he-IL"),year:now.getFullYear()});}
       cash=Math.round((cash+tot)*100)/100;
     }
   }
-  fullCurveData=genFullCurve(); curveData=getSlice(curveRange);
+  fullCurveData=genFullCurve();curveData=getSlice(curveRange);
   renderAll();closeModal();
 }
 
-// ── NAVIGATION ────────────────────────────────────────
-// ── THEME TOGGLE ──────────────────────────────────────
 function toggleTheme(){
   const isLight=document.body.classList.toggle("light-mode");
   (document.getElementById("theme-toggle")||{}).textContent=isLight?"🌞":"🌙";
-  localStorage.setItem("blinkTheme", isLight?"light":"dark");
+  localStorage.setItem("blinkTheme",isLight?"light":"dark");
 }
 
 function applyTheme(){
   const saved=localStorage.getItem("blinkTheme");
-  if(saved==="light"){
-    document.body.classList.add("light-mode");
-    const btn=document.getElementById("theme-toggle");
-    if(btn) btn.textContent="🌞";
-  }
+  if(saved==="light"){document.body.classList.add("light-mode");const btn=document.getElementById("theme-toggle");if(btn) btn.textContent="🌞";}
 }
 
-// ── MONTHLY PERFORMANCE ────────────────────────────────
 let monthlyMode="pnl";
-
 const MONTH_NAMES=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 
 function setMonthlyMode(m){
@@ -1793,79 +1295,31 @@ function setMonthlyMode(m){
 }
 
 function parseDate(dateStr){
-  // Supports "22/03/2026" (he-IL) and ISO formats
   if(!dateStr) return null;
-  if(dateStr.includes("/")){
-    const p=dateStr.split("/");
-    if(p.length===3) return new Date(+p[2],+p[1]-1,+p[0]);
-  }
+  if(dateStr.includes("/")){const p=dateStr.split("/");if(p.length===3) return new Date(+p[2],+p[1]-1,+p[0]);}
   return new Date(dateStr);
 }
 
 function buildMonthlyData(){
-  // Group sold positions by month/year
   const map={};
   sold.forEach(function(p){
     const d=parseDate(p.date);
     if(!d||isNaN(d)) return;
     const key=d.getFullYear()+"-"+(d.getMonth()+1);
     if(!map[key]) map[key]={year:d.getFullYear(),month:d.getMonth(),count:0,gains:0,losses:0,net:0};
-    const m=map[key];
-    m.count++;
-    if(p.prf>0) m.gains+=p.prf;
-    else        m.losses+=p.prf; // negative
+    const m=map[key];m.count++;
+    if(p.prf>0) m.gains+=p.prf;else m.losses+=p.prf;
     m.net+=p.prf;
   });
-  // Sort chronologically
-  return Object.values(map).sort(function(a,b){
-    return (a.year*12+a.month)-(b.year*12+b.month);
-  });
+  return Object.values(map).sort(function(a,b){return(a.year*12+a.month)-(b.year*12+b.month);});
 }
 
 function renderMonthly(){
-  const data=buildMonthlyData();
-  const taxR=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
-
-  if(!data.length){
-    (document.getElementById("monthly-stats")||{innerHTML:""}).innerHTML="";
-    return;
-  }
-
-  // ── Summary stats ──────────────────────────────────
-  const totalNet=data.reduce(function(s,m){return s+m.net;},0);
-  const totalGains=data.reduce(function(s,m){return s+m.gains;},0);
-  const totalLosses=data.reduce(function(s,m){return s+m.losses;},0);
-  const taxDue=Math.max(0,totalNet)*(taxR/100);
-  const best=data.reduce(function(a,b){return b.net>a.net?b:a;});
-  const worst=data.reduce(function(a,b){return b.net<a.net?b:a;});
-  const avgNet=totalNet/data.length;
-
+  const data=buildMonthlyData(),taxR=parseFloat(document.getElementById("tax-inp")?document.getElementById("tax-inp").value:25)||25;
+  if(!data.length){(document.getElementById("monthly-stats")||{innerHTML:""}).innerHTML="";return;}
+  const totalNet=data.reduce(function(s,m){return s+m.net;},0),totalGains=data.reduce(function(s,m){return s+m.gains;},0),totalLosses=data.reduce(function(s,m){return s+m.losses;},0),taxDue=Math.max(0,totalNet)*(taxR/100),best=data.reduce(function(a,b){return b.net>a.net?b:a;}),worst=data.reduce(function(a,b){return b.net<a.net?b:a;}),avgNet=totalNet/data.length;
   const statsEl=document.getElementById("monthly-stats");
-  statsEl.innerHTML=
-    "<div class='stat-card "+(totalNet>=0?"glow-g":"glow-r")+"'>"
-      +"<div class='stat-lbl'>סהכ נטו<span class='stat-emoji'>"+(totalNet>=0?"📈":"📉")+"</span></div>"
-      +"<div class='stat-val' style='color:"+clr(totalNet)+"'>"+usd(totalNet)+"</div>"
-      +"<div class='stat-sub'>לאחר מס: "+usd(totalNet-taxDue)+"</div>"
-    +"</div>"
-    +"<div class='stat-card'>"
-      +"<div class='stat-lbl'>ממוצע חודשי<span class='stat-emoji'>📊</span></div>"
-      +"<div class='stat-val' style='color:"+clr(avgNet)+"'>"+usd(avgNet)+"</div>"
-      +"<div class='stat-sub'>"+data.length+" חודשים פעילים</div>"
-    +"</div>"
-    +"<div class='stat-card glow-g'>"
-      +"<div class='stat-lbl'>החודש הטוב ביותר<span class='stat-emoji'>🏆</span></div>"
-      +"<div class='stat-val' style='color:var(--grn)'>"+usd(best.net)+"</div>"
-      +"<div class='stat-sub'>"+MONTH_NAMES[best.month]+" "+best.year+"</div>"
-    +"</div>"
-    +"<div class='stat-card glow-r'>"
-      +"<div class='stat-lbl'>החודש הגרוע ביותר<span class='stat-emoji'>📉</span></div>"
-      +"<div class='stat-val' style='color:var(--red)'>"+usd(worst.net)+"</div>"
-      +"<div class='stat-sub'>"+MONTH_NAMES[worst.month]+" "+worst.year+"</div>"
-    +"</div>";
-
-  // ── Chart ──────────────────────────────────────────
-
-  // Chart removed
+  statsEl.innerHTML="<div class='stat-card "+(totalNet>=0?"glow-g":"glow-r")+"'><div class='stat-lbl'>סהכ נטו<span class='stat-emoji'>"+(totalNet>=0?"📈":"📉")+"</span></div><div class='stat-val' style='color:"+clr(totalNet)+"'>"+usd(totalNet)+"</div><div class='stat-sub'>לאחר מס: "+usd(totalNet-taxDue)+"</div></div><div class='stat-card'><div class='stat-lbl'>ממוצע חודשי<span class='stat-emoji'>📊</span></div><div class='stat-val' style='color:"+clr(avgNet)+"'>"+usd(avgNet)+"</div><div class='stat-sub'>"+data.length+" חודשים פעילים</div></div><div class='stat-card glow-g'><div class='stat-lbl'>החודש הטוב ביותר<span class='stat-emoji'>🏆</span></div><div class='stat-val' style='color:var(--grn)'>"+usd(best.net)+"</div><div class='stat-sub'>"+MONTH_NAMES[best.month]+" "+best.year+"</div></div><div class='stat-card glow-r'><div class='stat-lbl'>החודש הגרוע ביותר<span class='stat-emoji'>📉</span></div><div class='stat-val' style='color:var(--red)'>"+usd(worst.net)+"</div><div class='stat-sub'>"+MONTH_NAMES[worst.month]+" "+worst.year+"</div></div>";
 }
 
 function switchView(id){
@@ -1874,892 +1328,336 @@ function switchView(id){
   document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v===id));
   document.querySelectorAll(".mob-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.v===id));
   if(id==="history") renderHistory();
-  if(id==="realized")renderRealized();
+  if(id==="realized") renderRealized();
   if(id==="monthly") renderMonthly();
-  if(id==="alerts"){
-    renderAlerts();
-    if("Notification" in window) updateNotifUI(Notification.permission);
-  }
+  if(id==="alerts"){renderAlerts();if("Notification" in window) updateNotifUI(Notification.permission);}
   if(id==="settings"){
     var infoEl=document.getElementById("storage-info");
-    if(infoEl){
-      var raw=localStorage.getItem("blinkPortfolioData_v1");
-      if(raw){
-        try{
-          var st=JSON.parse(raw);
-          var d=new Date(st.savedAt);
-          var kb=Math.round(raw.length/1024*10)/10;
-          infoEl.innerHTML="✅ נשמר: "+d.toLocaleDateString("he-IL")+" "+d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})
-            +" &nbsp;·&nbsp; "+st.txns.length+" עסקאות &nbsp;·&nbsp; "+st.sold.length+" סגורות &nbsp;·&nbsp; "+kb+"KB";
-        }catch(e){ infoEl.textContent="שגיאה בקריאת נתונים"; }
-      } else {
-        infoEl.textContent="⚪ אין נתונים שמורים עדיין";
-      }
-    }
+    if(infoEl){var raw=localStorage.getItem("blinkPortfolioData_v1");if(raw){try{var st=JSON.parse(raw),d=new Date(st.savedAt),kb=Math.round(raw.length/1024*10)/10;infoEl.innerHTML="✅ נשמר: "+d.toLocaleDateString("he-IL")+" "+d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})+" &nbsp;·&nbsp; "+st.txns.length+" עסקאות &nbsp;·&nbsp; "+st.sold.length+" סגורות &nbsp;·&nbsp; "+kb+"KB";}catch(e){infoEl.textContent="שגיאה בקריאת נתונים";}}else{infoEl.textContent="⚪ אין נתונים שמורים עדיין";}}
   }
 }
 
-// ── AUTO-SAVE TO LOCALSTORAGE ─────────────────────────
-const SAVE_KEY = "blinkPortfolioData_v1";
+const SAVE_KEY="blinkPortfolioData_v1";
 
 function saveState(){
-  try{
-    const state = {
-      H:       H,
-      cash:    cash,
-      txns:    txns,
-      sold:    sold,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-    showSaveIndicator();
-  }catch(e){ console.warn("Save failed:", e); }
+  try{const state={H,cash,txns,sold,savedAt:new Date().toISOString()};localStorage.setItem(SAVE_KEY,JSON.stringify(state));showSaveIndicator();}catch(e){console.warn("Save failed:",e);}
 }
 
 function loadState(){
   try{
-    const raw = localStorage.getItem(SAVE_KEY);
-    if(!raw) return false;
-    const state = JSON.parse(raw);
-    if(state.H     && state.H.length)    H    = state.H;
-    if(state.cash  !== undefined)        cash = state.cash;
-    if(state.txns  && state.txns.length) txns = state.txns;
-    if(state.sold  && state.sold.length) sold = state.sold;
-    // State loaded silently
+    const raw=localStorage.getItem(SAVE_KEY);if(!raw) return false;
+    const state=JSON.parse(raw);
+    if(state.H&&state.H.length) H=state.H;
+    if(state.cash!==undefined) cash=state.cash;
+    if(state.txns&&state.txns.length) txns=state.txns;
+    if(state.sold&&state.sold.length) sold=state.sold;
     return true;
-  }catch(e){
-    console.warn("Load state failed:", e);
-    return false;
-  }
+  }catch(e){console.warn("Load state failed:",e);return false;}
 }
 
-function clearState(){
-  if(!confirm("למחוק את כל הנתונים השמורים ולהתחיל מחדש?")) return;
-  localStorage.removeItem(SAVE_KEY);
-  location.reload();
-}
+function clearState(){if(!confirm("למחוק את כל הנתונים השמורים ולהתחיל מחדש?")) return;localStorage.removeItem(SAVE_KEY);location.reload();}
 
-var _saveTimer = null;
-function showSaveIndicator(){
-  var el = document.getElementById("save-indicator");
-  if(!el) return;
-  el.style.opacity = "1";
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(function(){ el.style.opacity = "0"; }, 2000);
-}
+var _saveTimer=null;
+function showSaveIndicator(){var el=document.getElementById("save-indicator");if(!el) return;el.style.opacity="1";clearTimeout(_saveTimer);_saveTimer=setTimeout(function(){el.style.opacity="0";},2000);}
 
-// ── RENDER ALL + AUTO-SAVE ────────────────────────────
-function renderAll(){
-  renderStats();
-  renderTable();
-  renderCurve();
-  saveState();  // save on every render
-}
+function renderAll(){renderStats();renderTable();renderCurve();saveState();}
 
-// ── INIT ──────────────────────────────────────────────
 window.addEventListener("load",function(){
-  applyTheme();  // ← restore theme first (no flash)
-  loadState();   // ← restore saved data
-  setupPWA();    // ← register PWA manifest + install prompt
-  fullCurveData=genFullCurve(); // ← build REAL equity curve from transactions
-  curveData=getSlice("1m");     // ← default view: 1 month
+  applyTheme();loadState();setupPWA();
+  fullCurveData=genFullCurve();curveData=getSlice("1m");
   const now=new Date();
   (document.getElementById("last-upd")||{}).textContent="עדכון: "+now.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
   renderAll();
 });
 
-// ── ALERTS ────────────────────────────────────────────
-let priceAlerts=[];
-let serverUrl=localStorage.getItem("blinkServerUrl")||"";
-let chatId=localStorage.getItem("blinkChatId")||"";
+let priceAlerts=[],serverUrl=localStorage.getItem("blinkServerUrl")||"",chatId=localStorage.getItem("blinkChatId")||"";
 
 function renderAlerts(){
-  const el=document.getElementById("alert-list");
-  const cnt=document.getElementById("alerts-count");
+  const el=document.getElementById("alert-list"),cnt=document.getElementById("alerts-count");
   if(cnt) cnt.textContent=priceAlerts.length+" התראות";
-  if(!priceAlerts.length){
-    el.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:12px">🔕</div><div style="color:var(--mut)">אין התראות מוגדרות</div><div style="color:var(--dim);font-size:12px;margin-top:6px">הוסף מניה ומחיר יעד למעלה</div></div>';
-    return;
-  }
+  if(!priceAlerts.length){el.innerHTML='<div class="empty"><div style="font-size:32px;margin-bottom:12px">🔕</div><div style="color:var(--mut)">אין התראות מוגדרות</div><div style="color:var(--dim);font-size:12px;margin-top:6px">הוסף מניה ומחיר יעד למעלה</div></div>';return;}
   el.innerHTML=priceAlerts.map(function(a){
-    const dirLabel=a.direction==="above"?"⬆ עולה מעל":"⬇ יורד מתחת";
-    const dirClr=a.direction==="above"?"var(--grn)":"var(--red)";
-    // find current price if available
-    const h=H.find(function(x){return x.t===a.ticker;});
-    const curPr=h?h.pr:null;
-    const curPrHtml=curPr!==null
-      ? "<span style='font-size:11px;color:var(--mut);font-family:var(--f1)'>מחיר נוכחי: <strong style='color:var(--txt)'>"+usd(curPr)+"</strong></span>"
-      : "<span style='font-size:11px;color:var(--dim)'>לא בתיק — ייבדק בעת רענון מחירים חיים</span>";
-    const cardCls=a.triggered?"alert-card triggered":"alert-card";
-    const triggeredBadge=a.triggered?"<span class='badge bgrn' style='font-size:10px'>✅ הופעלה!</span>":"";
-    return "<div class='"+cardCls+"'>"
-      +"<div>"
-        +"<div style='display:flex;align-items:center;gap:8px;margin-bottom:5px'>"
-          +"<span style='font-weight:800;color:var(--acc);font-family:var(--f1);font-size:16px'>"+a.ticker+"</span>"
-          +"<span style='font-size:11px;font-weight:700;color:"+dirClr+"'>"+dirLabel+"</span>"
-          +"<span style='font-size:14px;font-weight:800;color:var(--txt);font-family:var(--f1)'>"+usd(a.targetPrice)+"</span>"
-          +triggeredBadge
-        +"</div>"
-        +"<div style='display:flex;align-items:center;gap:10px'>"
-          +curPrHtml
-          +"<span style='font-size:10px;color:var(--dim)'>הוגדר: "+a.addedDate+"</span>"
-        +"</div>"
-      +"</div>"
-      +"<button class='alert-del' onclick='deleteAlert("+a.id+")'>🗑</button>"
-      +"</div>";
+    const dirLabel=a.direction==="above"?"⬆ עולה מעל":"⬇ יורד מתחת",dirClr=a.direction==="above"?"var(--grn)":"var(--red)";
+    const h=H.find(function(x){return x.t===a.ticker;}),curPr=h?h.pr:null;
+    const curPrHtml=curPr!==null?"<span style='font-size:11px;color:var(--mut);font-family:var(--f1)'>מחיר נוכחי: <strong style='color:var(--txt)'>"+usd(curPr)+"</strong></span>":"<span style='font-size:11px;color:var(--dim)'>לא בתיק — ייבדק בעת רענון מחירים חיים</span>";
+    const cardCls=a.triggered?"alert-card triggered":"alert-card",triggeredBadge=a.triggered?"<span class='badge bgrn' style='font-size:10px'>✅ הופעלה!</span>":"";
+    return "<div class='"+cardCls+"'><div><div style='display:flex;align-items:center;gap:8px;margin-bottom:5px'><span style='font-weight:800;color:var(--acc);font-family:var(--f1);font-size:16px'>"+a.ticker+"</span><span style='font-size:11px;font-weight:700;color:"+dirClr+"'>"+dirLabel+"</span><span style='font-size:14px;font-weight:800;color:var(--txt);font-family:var(--f1)'>"+usd(a.targetPrice)+"</span>"+triggeredBadge+"</div><div style='display:flex;align-items:center;gap:10px'>"+curPrHtml+"<span style='font-size:10px;color:var(--dim)'>הוגדר: "+a.addedDate+"</span></div></div><button class='alert-del' onclick='deleteAlert("+a.id+")'>🗑</button></div>";
   }).join("");
 }
 
-// ── SERVER CONNECTION ─────────────────────────────────
 function saveServerUrl(){
   const raw=document.getElementById("server-url-inp").value.trim();
   if(!raw){showToast("הזן URL תקין");return;}
   const url=raw.replace(/\/+$/,"").replace(/^(?!https?:\/\/)/,"https://");
-  // Update input to clean URL
   document.getElementById("server-url-inp").value=url;
-  serverUrl=url;
-  localStorage.setItem("blinkServerUrl",url);
+  serverUrl=url;localStorage.setItem("blinkServerUrl",url);
   testServerConnection(url,true);
 }
 
-// ── CONNECT WITH RETRY (handles Render free-tier cold start) ──────
-// Render free tier sleeps after 15min inactivity.
-// Cold start takes up to 50s — we retry 4 times with growing timeout.
-async function testServerConnection(url, userInitiated){
+async function testServerConnection(url,userInitiated){
   const el=document.getElementById("server-status");
-  if(!url||!url.startsWith("http")){
-    if(el) el.innerHTML="<span style='color:var(--red)'>❌ URL לא תקין — חייב להתחיל ב-https://</span>";
-    return false;
-  }
-
-  // Step 1: Wake-ping with no-cors (bypasses CORS on cold-start 503)
+  if(!url||!url.startsWith("http")){if(el) el.innerHTML="<span style='color:var(--red)'>❌ URL לא תקין — חייב להתחיל ב-https://</span>";return false;}
   if(el) el.innerHTML="<span style='color:var(--gld)'>⏳ מעיר את השרת... (עד 60 שניות)</span>";
-  try{ fetch(url+"/",{mode:"no-cors"}); }catch(e){}
-
-  // Step 2: Poll with real fetch until success or timeout
-  const deadline=Date.now()+65000; // 65s total
-  let attempt=0;
+  try{fetch(url+"/",{mode:"no-cors"});}catch(e){}
+  const deadline=Date.now()+65000;let attempt=0;
   while(Date.now()<deadline){
-    attempt++;
-    const remaining=Math.round((deadline-Date.now())/1000);
-    if(attempt>1){
-      if(el) el.innerHTML="<span style='color:var(--gld)'>⏳ ממתין לשרת... ("+remaining+"s נותרו)</span>";
-    }
+    attempt++;const remaining=Math.round((deadline-Date.now())/1000);
+    if(attempt>1){if(el) el.innerHTML="<span style='color:var(--gld)'>⏳ ממתין לשרת... ("+remaining+"s נותרו)</span>";}
     try{
-      const ctrl=new AbortController();
-      const tid=setTimeout(function(){ctrl.abort();},8000);
-      const r=await fetch(url+"/",{
-        signal:ctrl.signal,
-        headers:{"Accept":"application/json","Cache-Control":"no-cache"}
-      });
-      clearTimeout(tid);
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      const json=await r.json();
-      if(!json.status) throw new Error("unexpected response");
+      const ctrl=new AbortController(),tid=setTimeout(function(){ctrl.abort();},8000);
+      const r=await fetch(url+"/",{signal:ctrl.signal,headers:{"Accept":"application/json","Cache-Control":"no-cache"}});
+      clearTimeout(tid);if(!r.ok) throw new Error("HTTP "+r.status);
+      const json=await r.json();if(!json.status) throw new Error("unexpected response");
       const active=json.alerts_active!==undefined?json.alerts_active:(json.active||0);
       _setEl("server-status","<span style='color:var(--grn)'>✅ מחובר! "+active+" התראות פעילות | keep-alive פעיל 24/7</span>");
-      _kaConnected = true;
-      _updateSidebarBadge(true);
+      _kaConnected=true;_updateSidebarBadge(true);
       if(userInitiated) showToast("✅ שרת מחובר — התראות פעילות 24/7!");
-      syncAlertsFromServer(url);
-      startKeepAlive();
-      return true;
-    }catch(e){
-      // Server still waking up — wait and retry
-      await new Promise(function(res){setTimeout(res,5000);});
-    }
+      syncAlertsFromServer(url);startKeepAlive();return true;
+    }catch(e){await new Promise(function(res){setTimeout(res,5000);});}
   }
-
-  // Timeout — show helpful error
   if(el) el.innerHTML="<span style='color:var(--red)'>❌ השרת לא מגיב. לחץ: <a href='"+url+"' target='_blank' style='color:var(--acc)'>פתח שרת</a> ← ואז לחץ שמור שוב</span>";
   if(userInitiated) showToast("❌ השרת לא הגיב תוך 65 שניות");
   return false;
 }
 
-// ── SYNC ALERTS FROM SERVER ────────────────────────────
 async function syncAlertsFromServer(url){
   try{
     const r=await fetch(url+"/alerts",{signal:_abortSignal(10000)});
-    if(!r.ok) return;
-    const serverAlerts=await r.json();
+    if(!r.ok) return;const serverAlerts=await r.json();
     if(!Array.isArray(serverAlerts)||!serverAlerts.length) return;
-    // Merge: add server alerts not already in local list
     serverAlerts.forEach(function(sa){
       const exists=priceAlerts.some(function(la){return la.id===sa.id||la.ticker===sa.ticker&&la.targetPrice===sa.targetPrice;});
-      if(!exists){
-        priceAlerts.push({
-          id:sa.id,ticker:sa.ticker,targetPrice:sa.targetPrice,
-          direction:sa.direction,triggered:sa.triggered||false,
-          addedDate:(sa.addedAt||"").slice(0,10)||new Date().toLocaleDateString("he-IL"),
-          serverManaged:true
-        });
-      }
+      if(!exists) priceAlerts.push({id:sa.id,ticker:sa.ticker,targetPrice:sa.targetPrice,direction:sa.direction,triggered:sa.triggered||false,addedDate:(sa.addedAt||"").slice(0,10)||new Date().toLocaleDateString("he-IL"),serverManaged:true});
     });
     renderAlerts();
   }catch(e){}
 }
 
-// ── AbortSignal.timeout polyfill (Samsung Internet / old WebView fix) ──
-function _abortSignal(ms){
-  var ctrl = new AbortController();
-  setTimeout(function(){ ctrl.abort(); }, ms);
-  return ctrl.signal;
-}
+function _abortSignal(ms){var ctrl=new AbortController();setTimeout(function(){ctrl.abort();},ms);return ctrl.signal;}
 
-// ══════════════════════════════════════════════════════
-// KEEP-ALIVE 24/7 — Robust watchdog + auto-reconnect
-// ══════════════════════════════════════════════════════
-var _kaTimer       = null;
-var _kaFailures    = 0;
-var _kaInterval    = 8 * 60 * 1000;  // ping every 8 min
-var _kaMax         = 2;              // reconnect after 2 fails
-var _kaListeners   = false;
-var _kaConnected   = false;
+var _kaTimer=null,_kaFailures=0,_kaInterval=8*60*1000,_kaMax=2,_kaListeners=false,_kaConnected=false;
 
-// ── Safe DOM helper — never throws on null ────────────
-function _setEl(id, html){
-  var el = document.getElementById(id);
-  if(el) el.innerHTML = html;
-}
-function _setTxt(id, txt){
-  var el = document.getElementById(id);
-  if(el) el.textContent = txt;
-}
-function _setStyle(id, prop, val){
-  var el = document.getElementById(id);
-  if(el) el.style[prop] = val;
-}
+function _setEl(id,html){var el=document.getElementById(id);if(el) el.innerHTML=html;}
+function _setTxt(id,txt){var el=document.getElementById(id);if(el) el.textContent=txt;}
+function _setStyle(id,prop,val){var el=document.getElementById(id);if(el) el.style[prop]=val;}
 
 function startKeepAlive(){
   if(!serverUrl) return;
   if(_kaTimer) clearInterval(_kaTimer);
-  _kaTimer = setInterval(_kaPing, _kaInterval);
-  startKeepAlive._running = true;
-
+  _kaTimer=setInterval(_kaPing,_kaInterval);startKeepAlive._running=true;
   if(!_kaListeners){
-    _kaListeners = true;
-
-    // Tab becomes visible → ping immediately
-    document.addEventListener("visibilitychange", function(){
-      if(!document.hidden && serverUrl) _kaPing();
-    });
-
-    // Internet came back → reconnect
-    window.addEventListener("online", function(){
-      if(!serverUrl) return;
-      _setEl("server-status", "<span style='color:var(--gld)'>🌐 האינטרנט חזר — מתחבר...</span>");
-      _kaFailures = 0;
-      _kaConnected = false;
-      testServerConnection(serverUrl, false);
-    });
-
-    window.addEventListener("offline", function(){
-      _kaConnected = false;
-      _setEl("server-status", "<span style='color:var(--red)'>📵 אין אינטרנט — ממתין...</span>");
-      _updateSidebarBadge(false);
-    });
+    _kaListeners=true;
+    document.addEventListener("visibilitychange",function(){if(!document.hidden&&serverUrl) _kaPing();});
+    window.addEventListener("online",function(){if(!serverUrl) return;_setEl("server-status","<span style='color:var(--gld)'>🌐 האינטרנט חזר — מתחבר...</span>");_kaFailures=0;_kaConnected=false;testServerConnection(serverUrl,false);});
+    window.addEventListener("offline",function(){_kaConnected=false;_setEl("server-status","<span style='color:var(--red)'>📵 אין אינטרנט — ממתין...</span>");_updateSidebarBadge(false);});
   }
 }
-startKeepAlive._running = false;
+startKeepAlive._running=false;
 
 async function _kaPing(){
   if(!serverUrl) return;
   try{
-    var ctrl = new AbortController();
-    var tid  = setTimeout(function(){ ctrl.abort(); }, 6000);
-    var r    = await fetch(serverUrl+"/", { signal:ctrl.signal, cache:"no-store" });
+    var ctrl=new AbortController(),tid=setTimeout(function(){ctrl.abort();},6000);
+    var r=await fetch(serverUrl+"/",{signal:ctrl.signal,cache:"no-store"});
     clearTimeout(tid);
-    if(r.ok){
-      _kaFailures  = 0;
-      _kaConnected = true;
-      _updateSidebarBadge(true);
-    } else { throw new Error("HTTP "+r.status); }
+    if(r.ok){_kaFailures=0;_kaConnected=true;_updateSidebarBadge(true);}else{throw new Error("HTTP "+r.status);}
   }catch(e){
-    _kaFailures++;
-    console.warn("[KeepAlive] ping failed ("+_kaFailures+"/"+_kaMax+")", e.message);
-    if(_kaFailures >= _kaMax){
-      _kaConnected = false;
-      _updateSidebarBadge(false);
-      _setEl("server-status","<span style='color:var(--gld)'>⚠️ חיבור אבד — מתחבר מחדש...</span>");
-      testServerConnection(serverUrl, false).then(function(ok){
-        if(ok){ _kaFailures=0; showToast("🔄 חיבור שוחזר אוטומטית!"); }
-      });
-    }
+    _kaFailures++;console.warn("[KeepAlive] ping failed ("+_kaFailures+"/"+_kaMax+")",e.message);
+    if(_kaFailures>=_kaMax){_kaConnected=false;_updateSidebarBadge(false);_setEl("server-status","<span style='color:var(--gld)'>⚠️ חיבור אבד — מתחבר מחדש...</span>");testServerConnection(serverUrl,false).then(function(ok){if(ok){_kaFailures=0;showToast("🔄 חיבור שוחזר אוטומטית!");}});}
   }
 }
 
 function _updateSidebarBadge(connected){
-  var dot = document.getElementById("sidebar-server-dot");
-  var txt = document.getElementById("sidebar-server-txt");
-  if(connected){
-    if(dot){ dot.style.background="var(--grn)"; dot.style.boxShadow="0 0 5px var(--grn)"; }
-    if(txt) txt.textContent = "שרת: מחובר 24/7";
-  } else {
-    if(dot){ dot.style.background="var(--red)"; dot.style.boxShadow="0 0 5px var(--red)"; }
-    if(txt) txt.textContent = "שרת: לא מחובר";
-  }
+  var dot=document.getElementById("sidebar-server-dot"),txt=document.getElementById("sidebar-server-txt");
+  if(connected){if(dot){dot.style.background="var(--grn)";dot.style.boxShadow="0 0 5px var(--grn)";}if(txt) txt.textContent="שרת: מחובר 24/7";}
+  else{if(dot){dot.style.background="var(--red)";dot.style.boxShadow="0 0 5px var(--red)";}if(txt) txt.textContent="שרת: לא מחובר";}
 }
 
-// ── MANUAL CONNECT ────────────────────────────────────
-function manualConnect(){
-  const inp=document.getElementById("server-url-inp");
-  const url=(inp&&inp.value.trim())||serverUrl;
-  if(!url){ showToast("הכנס URL קודם"); return; }
-  const clean=url.replace(/\/+$/,"");
-  if(inp) inp.value=clean;
-  serverUrl=clean;
-  localStorage.setItem("blinkServerUrl",clean);
-  testServerConnection(clean, true);
-}
+function manualConnect(){const inp=document.getElementById("server-url-inp"),url=(inp&&inp.value.trim())||serverUrl;if(!url){showToast("הכנס URL קודם");return;}const clean=url.replace(/\/+$/,"");if(inp) inp.value=clean;serverUrl=clean;localStorage.setItem("blinkServerUrl",clean);testServerConnection(clean,true);}
 
-// ── DIAGNOSE CONNECTION ───────────────────────────────
 async function diagServer(){
-  const url=(document.getElementById("server-url-inp").value.trim()||serverUrl||"").replace(/\/+$/,"");
-  const el=document.getElementById("server-status");
-  if(!url){ if(el) el.innerHTML="<span style='color:var(--red)'>❌ אין URL — הכנס כתובת שרת</span>"; return; }
-
-  const lines=[];
-  lines.push("🔍 <b>אבחון חיבור...</b>");
-  if(el) el.innerHTML=lines.join("<br>");
-
-  // Test 1: Is URL valid format?
-  const validUrl=url.startsWith("http");
-  lines.push(validUrl?"✅ URL תקין: "+url:"❌ URL לא תקין — חייב להתחיל ב-https://");
-  if(el) el.innerHTML=lines.join("<br>");
-  if(!validUrl) return;
-
-  // Test 2: no-cors ping (just to wake it)
-  lines.push("⏳ שולח wake-up ping...");
-  if(el) el.innerHTML=lines.join("<br>");
-  try{ fetch(url+"/",{mode:"no-cors"}); }catch(e){}
-
-  // Test 3: real fetch with 15s timeout
-  lines.push("⏳ ממתין לתשובה (עד 15 שניות)...");
-  if(el) el.innerHTML=lines.join("<br>");
+  const url=(document.getElementById("server-url-inp").value.trim()||serverUrl||"").replace(/\/+$/,""),el=document.getElementById("server-status");
+  if(!url){if(el) el.innerHTML="<span style='color:var(--red)'>❌ אין URL — הכנס כתובת שרת</span>";return;}
+  const lines=["🔍 <b>אבחון חיבור...</b>"];if(el) el.innerHTML=lines.join("<br>");
+  const validUrl=url.startsWith("http");lines.push(validUrl?"✅ URL תקין: "+url:"❌ URL לא תקין — חייב להתחיל ב-https://");if(el) el.innerHTML=lines.join("<br>");if(!validUrl) return;
+  lines.push("⏳ שולח wake-up ping...");if(el) el.innerHTML=lines.join("<br>");try{fetch(url+"/",{mode:"no-cors"});}catch(e){}
+  lines.push("⏳ ממתין לתשובה (עד 15 שניות)...");if(el) el.innerHTML=lines.join("<br>");
   try{
-    const ctrl=new AbortController();
-    const tid=setTimeout(function(){ctrl.abort();},15000);
+    const ctrl=new AbortController(),tid=setTimeout(function(){ctrl.abort();},15000);
     const r=await fetch(url+"/",{signal:ctrl.signal,headers:{"Accept":"application/json"}});
-    clearTimeout(tid);
-    lines.push("✅ HTTP "+r.status+" — השרת ענה!");
-    if(r.ok){
-      const json=await r.json();
-      lines.push("✅ JSON תקין — status: "+json.status);
-      lines.push("✅ <b style='color:var(--grn)'>הכל עובד! לחץ התחבר עכשיו</b>");
-      serverUrl=url;
-      localStorage.setItem("blinkServerUrl",url);
-      startKeepAlive();
-    } else {
-      lines.push("❌ HTTP "+r.status+" — שגיאה בשרת");
-    }
+    clearTimeout(tid);lines.push("✅ HTTP "+r.status+" — השרת ענה!");
+    if(r.ok){const json=await r.json();lines.push("✅ JSON תקין — status: "+json.status);lines.push("✅ <b style='color:var(--grn)'>הכל עובד! לחץ התחבר עכשיו</b>");serverUrl=url;localStorage.setItem("blinkServerUrl",url);startKeepAlive();}
+    else{lines.push("❌ HTTP "+r.status+" — שגיאה בשרת");}
   }catch(err){
-    if(err.name==="AbortError"){
-      lines.push("⏱ timeout — השרת לא ענה ב-15 שניות");
-      lines.push("💡 <b>הסיבה:</b> Render ישן. פתח: <a href='"+url+"' target='_blank' style='color:var(--acc)'>"+url+"</a>");
-      lines.push("💡 אחרי שהדף נפתח — לחץ התחבר עכשיו");
-    } else if(err.message&&err.message.includes("CORS")||err.message&&err.message.includes("fetch")){
-      lines.push("❌ שגיאת CORS — השרת לא מאפשר בקשות");
-      lines.push("💡 ודא שהקוד האחרון של server.py הועלה ל-GitHub");
-    } else {
-      lines.push("❌ שגיאה: "+err.message);
-    }
+    if(err.name==="AbortError"){lines.push("⏱ timeout — השרת לא ענה ב-15 שניות");lines.push("💡 <b>הסיבה:</b> Render ישן. פתח: <a href='"+url+"' target='_blank' style='color:var(--acc)'>"+url+"</a>");lines.push("💡 אחרי שהדף נפתח — לחץ התחבר עכשיו");}
+    else{lines.push("❌ שגיאה: "+err.message);}
   }
   if(el) el.innerHTML=lines.join("<br>");
 }
 
-// ── ADD / DELETE ALERTS ───────────────────────────────
 async function addAlert(){
-  const ticker=document.getElementById("alert-ticker").value.trim().toUpperCase();
-  const price=parseFloat(document.getElementById("alert-price").value);
-  const dir=document.getElementById("alert-dir").value;
-  const errEl=document.getElementById("alert-err");
+  const ticker=document.getElementById("alert-ticker").value.trim().toUpperCase(),price=parseFloat(document.getElementById("alert-price").value),dir=document.getElementById("alert-dir").value,errEl=document.getElementById("alert-err");
   if(!ticker){errEl.textContent="הזן סימול מניה";errEl.style.display="block";return;}
   if(isNaN(price)||price<=0){errEl.textContent="הזן מחיר יעד תקין";errEl.style.display="block";return;}
   errEl.style.display="none";
-  const now=new Date();
-  const alertObj={
-    id:Date.now(),
-    ticker:ticker,
-    targetPrice:Math.round(price*100)/100,
-    direction:dir,
-    triggered:false,
-    addedDate:now.toLocaleDateString("he-IL")
-  };
-  // ── If server connected → send there (runs 24/7) ──
+  const now=new Date(),alertObj={id:Date.now(),ticker,targetPrice:Math.round(price*100)/100,direction:dir,triggered:false,addedDate:now.toLocaleDateString("he-IL")};
   if(serverUrl){
     try{
-      const btn=document.querySelector("#view-alerts button[onclick='addAlert()']");
-      if(btn){btn.textContent="⏳ שולח...";btn.disabled=true;}
-      const r=await fetch(serverUrl+"/alerts",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({ticker,targetPrice:alertObj.targetPrice,direction:dir}),
-        signal:_abortSignal(8000)
-      });
-      if(r.ok){
-        const saved=await r.json();
-        priceAlerts.push({...alertObj,id:saved.id,serverManaged:true});
-        showToast("🔔 התראה נוספה לשרת! תקבל הודעת טלגרם כשהמחיר יגיע ל-"+usd(alertObj.targetPrice));
-      } else {
-        throw new Error("server error "+r.status);
-      }
+      const btn=document.querySelector("#view-alerts button[onclick='addAlert()']");if(btn){btn.textContent="⏳ שולח...";btn.disabled=true;}
+      const r=await fetch(serverUrl+"/alerts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ticker,targetPrice:alertObj.targetPrice,direction:dir}),signal:_abortSignal(8000)});
+      if(r.ok){const saved=await r.json();priceAlerts.push({...alertObj,id:saved.id,serverManaged:true});showToast("🔔 התראה נוספה לשרת! תקבל הודעת טלגרם כשהמחיר יגיע ל-"+usd(alertObj.targetPrice));}
+      else{throw new Error("server error "+r.status);}
       if(btn){btn.textContent="הוסף";btn.disabled=false;}
-    }catch(e){
-      // fallback to local
-      priceAlerts.push(alertObj);
-      showToast("⚠️ שרת לא זמין — התראה נשמרה מקומית (פעילה בזמן שהאפליקציה פתוחה)");
-      const btn=document.querySelector("#view-alerts button[onclick='addAlert()']");
-      if(btn){btn.textContent="הוסף";btn.disabled=false;}
-    }
-  } else {
-    // Local only
-    priceAlerts.push(alertObj);
-    showToast("💾 התראה נשמרה מקומית — לחץ 🔄 בלוח המחוונים לבדיקה");
-  }
-  document.getElementById("alert-ticker").value="";
-  document.getElementById("alert-price").value="";
+    }catch(e){priceAlerts.push(alertObj);showToast("⚠️ שרת לא זמין — התראה נשמרה מקומית (פעילה בזמן שהאפליקציה פתוחה)");const btn=document.querySelector("#view-alerts button[onclick='addAlert()']");if(btn){btn.textContent="הוסף";btn.disabled=false;}}
+  }else{priceAlerts.push(alertObj);showToast("💾 התראה נשמרה מקומית — לחץ 🔄 בלוח המחוונים לבדיקה");}
+  document.getElementById("alert-ticker").value="";document.getElementById("alert-price").value="";
   renderAlerts();
 }
 
 async function deleteAlert(id){
   const a=priceAlerts.find(function(x){return x.id===id;});
-  if(a&&a.serverManaged&&serverUrl){
-    try{
-      await fetch(serverUrl+"/alerts/"+id,{method:"DELETE",signal:_abortSignal(5000)});
-    }catch(e){}
-  }
-  priceAlerts=priceAlerts.filter(function(x){return x.id!==id;});
-  renderAlerts();
+  if(a&&a.serverManaged&&serverUrl){try{await fetch(serverUrl+"/alerts/"+id,{method:"DELETE",signal:_abortSignal(5000)});}catch(e){}}
+  priceAlerts=priceAlerts.filter(function(x){return x.id!==id;});renderAlerts();
 }
 
 async function fetchAlertPrices(){
-  // Fetch prices for tickers in alerts that are NOT in the portfolio — via Finnhub
-  const alertTickers=priceAlerts.filter(function(a){return !a.triggered;}).map(function(a){return a.ticker;});
-  const portfolioTickers=H.map(function(h){return h.t;});
-  const extraTickers=alertTickers.filter(function(t){return !portfolioTickers.includes(t);});
-  if(!extraTickers.length||!FINNHUB_API_KEY||FINNHUB_API_KEY==="YOUR_FINNHUB_API_KEY") return {};
-  const priceMap={};
-  const results=await Promise.all(extraTickers.map(function(s){return fetchSingleFinnhub(s);}));
-  extraTickers.forEach(function(s,i){ if(results[i]) priceMap[s]=results[i].price; });
-  return priceMap;
+  const alertTickers=priceAlerts.filter(function(a){return !a.triggered;}).map(function(a){return a.ticker;}),portfolioTickers=H.map(function(h){return h.t;}),extraTickers=alertTickers.filter(function(t){return !portfolioTickers.includes(t);});
+  if(!extraTickers.length||!FINNHUB_API_KEY||FINNHUB_API_KEY==="YOUR_FINNHUB_API_KEY") return{};
+  const priceMap={},results=await Promise.all(extraTickers.map(function(s){return fetchSingleFinnhub(s);}));
+  extraTickers.forEach(function(s,i){if(results[i]) priceMap[s]=results[i].price;});return priceMap;
 }
 
 async function checkAlerts(){
   if(!priceAlerts.length) return;
-  // Get prices for portfolio holdings (already in H) + fetch extras
-  const extraPrices=await fetchAlertPrices();
-  let anyTriggered=false;
+  const extraPrices=await fetchAlertPrices();let anyTriggered=false;
   priceAlerts.forEach(function(a){
     if(a.triggered) return;
-    // Find price: portfolio first, then fetched extras
-    const h=H.find(function(x){return x.t===a.ticker;});
-    const curPrice=h?h.pr:(extraPrices[a.ticker]||null);
+    const h=H.find(function(x){return x.t===a.ticker;}),curPrice=h?h.pr:(extraPrices[a.ticker]||null);
     if(curPrice===null) return;
     const hit=(a.direction==="above"&&curPrice>=a.targetPrice)||(a.direction==="below"&&curPrice<=a.targetPrice);
-    if(hit){
-      a.triggered=true;
-      anyTriggered=true;
-      fireNotification(a,curPrice);
-    }
+    if(hit){a.triggered=true;anyTriggered=true;fireNotification(a,curPrice);}
   });
   if(anyTriggered) renderAlerts();
 }
 
 function fireNotification(alert,curPrice){
-  const dirTxt=alert.direction==="above"?"עלתה מעל":"ירדה מתחת";
-  const title="🔔 התראת מחיר — "+alert.ticker;
-  const body=alert.ticker+" "+dirTxt+" "+usd(alert.targetPrice)+" | מחיר נוכחי: "+usd(curPrice);
-  // Web Push Notification
-  if(Notification.permission==="granted"){
-    try{
-      new Notification(title,{
-        body:body,
-        icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>",
-        badge:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>",
-        tag:"alert-"+alert.ticker,
-        requireInteraction:true
-      });
-    }catch(e){}
-  }
-  // In-app toast (always shown regardless of permission)
+  const dirTxt=alert.direction==="above"?"עלתה מעל":"ירדה מתחת",title="🔔 התראת מחיר — "+alert.ticker,body=alert.ticker+" "+dirTxt+" "+usd(alert.targetPrice)+" | מחיר נוכחי: "+usd(curPrice);
+  if(Notification.permission==="granted"){try{new Notification(title,{body,icon:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>",badge:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>",tag:"alert-"+alert.ticker,requireInteraction:true});}catch(e){}}
   showToast("🔔 "+alert.ticker+" הגיעה ל-"+usd(curPrice)+" — "+body);
 }
 
-function showToast(msg){
-  var t=document.createElement("div");
-  t.style.cssText="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#0c1525;border:1px solid #00d4a8;border-radius:12px;padding:14px 20px;color:#c5d5ef;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.8);max-width:90vw;text-align:center;animation:fadeIn .3s ease";
-  t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(function(){t.style.opacity="0";t.style.transition="opacity .4s";setTimeout(function(){t.remove();},400);},5000);
-}
+function showToast(msg){var t=document.createElement("div");t.style.cssText="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#0c1525;border:1px solid #00d4a8;border-radius:12px;padding:14px 20px;color:#c5d5ef;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.8);max-width:90vw;text-align:center;animation:fadeIn .3s ease";t.textContent=msg;document.body.appendChild(t);setTimeout(function(){t.style.opacity="0";t.style.transition="opacity .4s";setTimeout(function(){t.remove();},400);},5000);}
 
-function requestNotifPermission(){
-  if(!("Notification" in window)){
-    showToast("הדפדפן שלך לא תומך בהתראות");
-    return;
-  }
-  Notification.requestPermission().then(function(perm){
-    updateNotifUI(perm);
-    if(perm==="granted") showToast("✅ התראות אופשרו! תקבל notification לטלפון");
-    else showToast("⚠️ לא אופשרו התראות — ניתן לשנות בהגדרות הדפדפן");
-  });
-}
+function requestNotifPermission(){if(!("Notification" in window)){showToast("הדפדפן שלך לא תומך בהתראות");return;}Notification.requestPermission().then(function(perm){updateNotifUI(perm);if(perm==="granted") showToast("✅ התראות אופשרו! תקבל notification לטלפון");else showToast("⚠️ לא אופשרו התראות — ניתן לשנות בהגדרות הדפדפן");});}
 
-function updateNotifUI(perm){
-  var banner=document.getElementById("notif-banner");
-  var granted=document.getElementById("notif-granted");
-  if(!banner||!granted) return;
-  if(perm==="granted"){banner.style.display="none";granted.style.display="flex";}
-  else{banner.style.display="flex";granted.style.display="none";}
-}
+function updateNotifUI(perm){var banner=document.getElementById("notif-banner"),granted=document.getElementById("notif-granted");if(!banner||!granted) return;if(perm==="granted"){banner.style.display="none";granted.style.display="flex";}else{banner.style.display="flex";granted.style.display="none";}}
 
-// ── HOOK: check alerts every time live prices are fetched ──
 var _origFetchLive=fetchLivePrices;
-fetchLivePrices=async function(){
-  await _origFetchLive();
-  await checkAlerts();
-};
+fetchLivePrices=async function(){await _origFetchLive();await checkAlerts();};
 
-// ── HOOK: add alerts render to switchView ──────────────
 var _origSwitch=switchView;
 switchView=function(id){
   _origSwitch(id);
-  if(id==="alerts"){
-    renderAlerts();
-    if("Notification" in window) updateNotifUI(Notification.permission);
-  }
-  if(id==="settings"){
-    // Show storage info
-    var infoEl=document.getElementById("storage-info");
-    if(infoEl){
-      var raw=localStorage.getItem("blinkPortfolioData_v1");
-      if(raw){
-        try{
-          var st=JSON.parse(raw);
-          var d=new Date(st.savedAt);
-          var kb=Math.round(raw.length/1024*10)/10;
-          infoEl.innerHTML="✅ נשמר: "+d.toLocaleDateString("he-IL")+" "+d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})
-            +" &nbsp;·&nbsp; "+st.txns.length+" עסקאות &nbsp;·&nbsp; "+st.sold.length+" סגורות &nbsp;·&nbsp; "+kb+"KB";
-        }catch(e){ infoEl.textContent="שגיאה בקריאת נתונים"; }
-      } else {
-        infoEl.textContent="⚪ אין נתונים שמורים עדיין";
-      }
-    }
-  }
+  if(id==="alerts"){renderAlerts();if("Notification" in window) updateNotifUI(Notification.permission);}
+  if(id==="settings"){var infoEl=document.getElementById("storage-info");if(infoEl){var raw=localStorage.getItem("blinkPortfolioData_v1");if(raw){try{var st=JSON.parse(raw),d=new Date(st.savedAt),kb=Math.round(raw.length/1024*10)/10;infoEl.innerHTML="✅ נשמר: "+d.toLocaleDateString("he-IL")+" "+d.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})+" &nbsp;·&nbsp; "+st.txns.length+" עסקאות &nbsp;·&nbsp; "+st.sold.length+" סגורות &nbsp;·&nbsp; "+kb+"KB";}catch(e){infoEl.textContent="שגיאה בקריאת נתונים";}}else{infoEl.textContent="⚪ אין נתונים שמורים עדיין";}}}
 };
-
-// ══════════════════════════════════════════════════════
-// EXPORT FUNCTIONS
-// ══════════════════════════════════════════════════════
 
 function exportExcel(){
   try{
-    const taxR=parseFloat(document.getElementById("tax-inp").value)||25;
-    const wb=XLSX.utils.book_new();
-    const totPF=totP();
-
-    // ── Sheet 1: תיק פעיל ─────────────────────────────
+    const taxR=parseFloat(document.getElementById("tax-inp").value)||25,wb=XLSX.utils.book_new(),totPF=totP();
     const portfolio=[["סימול","תאריך קנייה","מניות","מחיר ממוצע","מחיר נוכחי","סהכ השקעה","ערך נוכחי","רווח/הפסד $","רווח/הפסד %","% מהתיק","ענף"]];
-    H.forEach(function(h){
-      const inv=h.sh*h.avg, val=h.sh*h.pr, pnl=val-inv;
-      const pnlP=inv>0?(pnl/inv)*100:0, port=totPF>0?(val/totPF)*100:0;
-      portfolio.push([h.t, h.buyDate||"—", h.sh, h.avg, h.pr, +inv.toFixed(2), +val.toFixed(2), +pnl.toFixed(2), +(pnlP).toFixed(2)+"%", +(port).toFixed(2)+"%", h.sec]);
-    });
+    H.forEach(function(h){const inv=h.sh*h.avg,val=h.sh*h.pr,pnl=val-inv,pnlP=inv>0?(pnl/inv)*100:0,port=totPF>0?(val/totPF)*100:0;portfolio.push([h.t,h.buyDate||"—",h.sh,h.avg,h.pr,+inv.toFixed(2),+val.toFixed(2),+pnl.toFixed(2),+(pnlP).toFixed(2)+"%",+(port).toFixed(2)+"%",h.sec]);});
     portfolio.push(["CASH","—","—","—","—","—",+cash.toFixed(2),"—","—",+(totPF>0?(cash/totPF)*100:0).toFixed(2)+"%","מזומן"]);
-    const ws1=XLSX.utils.aoa_to_sheet(portfolio);
-    ws1["!cols"]=[{wch:8},{wch:12},{wch:8},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:10},{wch:14}];
-    XLSX.utils.book_append_sheet(wb, ws1, "תיק פעיל");
-
-    // ── Sheet 2: היסטוריית עסקאות ─────────────────────
+    const ws1=XLSX.utils.aoa_to_sheet(portfolio);ws1["!cols"]=[{wch:8},{wch:12},{wch:8},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12},{wch:10},{wch:14}];XLSX.utils.book_append_sheet(wb,ws1,"תיק פעיל");
     const history=[["תאריך","שעה","סוג","סימול","מחיר","כמות","סהכ","ענף"]];
-    txns.forEach(function(tx){
-      history.push([tx.date, tx.time, tx.type==="buy"?"קנייה":"מכירה", tx.t, tx.pr, tx.sh, +tx.tot.toFixed(2), tx.sec||"—"]);
-    });
-    const ws2=XLSX.utils.aoa_to_sheet(history);
-    ws2["!cols"]=[{wch:12},{wch:7},{wch:8},{wch:8},{wch:10},{wch:8},{wch:12},{wch:14}];
-    XLSX.utils.book_append_sheet(wb, ws2, "היסטוריית עסקאות");
-
-    // ── Sheet 3: עסקאות שנסגרו ─────────────────────────
-    const allPrf=sold.reduce(function(s,p){return s+p.prf;},0);
-    const netTaxable=Math.max(0,allPrf);
-    const taxDue=Math.round(netTaxable*(taxR/100)*100)/100;
+    txns.forEach(function(tx){history.push([tx.date,tx.time,tx.type==="buy"?"קנייה":"מכירה",tx.t,tx.pr,tx.sh,+tx.tot.toFixed(2),tx.sec||"—"]);});
+    const ws2=XLSX.utils.aoa_to_sheet(history);ws2["!cols"]=[{wch:12},{wch:7},{wch:8},{wch:8},{wch:10},{wch:8},{wch:12},{wch:14}];XLSX.utils.book_append_sheet(wb,ws2,"היסטוריית עסקאות");
+    const allPrf=sold.reduce(function(s,p){return s+p.prf;},0),netTaxable=Math.max(0,allPrf),taxDue=Math.round(netTaxable*(taxR/100)*100)/100;
     const closed=[["תאריך","סימול","מניות","השקעה","ערך מכירה","רווח/הפסד גולמי","הערה"]];
-    sold.forEach(function(p){
-      closed.push([p.date, p.t, p.sh, +p.inv.toFixed(2), +p.sv.toFixed(2), +p.prf.toFixed(2), p.prf>=0?"רווח":"הפסד (מקוזז)"]);
-    });
-    closed.push([]);
-    closed.push(["","","","","","סהכ נטו:", +allPrf.toFixed(2)]);
-    closed.push(["","","","","","בסיס חיוב למס:", +netTaxable.toFixed(2)]);
-    closed.push(["","","","","","מס "+taxR+"% (לאחר קיזוז):", +taxDue.toFixed(2)]);
-    closed.push(["","","","","","נטו אחרי מס:", +(allPrf-taxDue).toFixed(2)]);
-    const ws3=XLSX.utils.aoa_to_sheet(closed);
-    ws3["!cols"]=[{wch:12},{wch:8},{wch:8},{wch:12},{wch:12},{wch:16},{wch:16}];
-    XLSX.utils.book_append_sheet(wb, ws3, "עסקאות שנסגרו");
-
-    // ── Sheet 4: סיכום מס ─────────────────────────────
-    const totalGains=sold.filter(function(p){return p.prf>0;}).reduce(function(s,p){return s+p.prf;},0);
-    const totalLosses=Math.abs(sold.filter(function(p){return p.prf<0;}).reduce(function(s,p){return s+p.prf;},0));
-    const tax=[
-      ["סיכום מס לצרכי דיווח",""],
-      ["",""],
-      ["שנה",""+new Date().getFullYear()],
-      ["שיעור מס",taxR+"%"],
-      ["",""],
-      ["סהכ רווחים",+totalGains.toFixed(2)],
-      ["סהכ הפסדים (קיזוז)",+(-totalLosses).toFixed(2)],
-      ["בסיס חיוב נטו",+netTaxable.toFixed(2)],
-      ["",""],
-      ["מס ללא קיזוז",+(Math.round(totalGains*(taxR/100)*100)/100)],
-      ["מס אחרי קיזוז",+taxDue.toFixed(2)],
-      ["חסכון בקיזוז",+Math.max(0,Math.round(totalGains*(taxR/100)*100)/100-taxDue).toFixed(2)],
-      ["",""],
-      ["רווח נקי לאחר מס",+(allPrf-taxDue).toFixed(2)],
-    ];
-    const ws4=XLSX.utils.aoa_to_sheet(tax);
-    ws4["!cols"]=[{wch:22},{wch:16}];
-    XLSX.utils.book_append_sheet(wb, ws4, "סיכום מס");
-
-    const now=new Date();
-    const fname="blink_pro_"+now.getFullYear()+("0"+(now.getMonth()+1)).slice(-2)+("0"+now.getDate()).slice(-2)+".xlsx";
-    XLSX.writeFile(wb, fname);
-    showToast("📗 הקובץ הורד: "+fname);
-  }catch(e){
-    showToast("⚠️ שגיאה בייצוא: "+e.message);
-    console.error(e);
-  }
+    sold.forEach(function(p){closed.push([p.date,p.t,p.sh,+p.inv.toFixed(2),+p.sv.toFixed(2),+p.prf.toFixed(2),p.prf>=0?"רווח":"הפסד (מקוזז)"]);});
+    closed.push([]);closed.push(["","","","","","סהכ נטו:",+allPrf.toFixed(2)]);closed.push(["","","","","","בסיס חיוב למס:",+netTaxable.toFixed(2)]);closed.push(["","","","","","מס "+taxR+"% (לאחר קיזוז):",+taxDue.toFixed(2)]);closed.push(["","","","","","נטו אחרי מס:",+(allPrf-taxDue).toFixed(2)]);
+    const ws3=XLSX.utils.aoa_to_sheet(closed);ws3["!cols"]=[{wch:12},{wch:8},{wch:8},{wch:12},{wch:12},{wch:16},{wch:16}];XLSX.utils.book_append_sheet(wb,ws3,"עסקאות שנסגרו");
+    const totalGains=sold.filter(function(p){return p.prf>0;}).reduce(function(s,p){return s+p.prf;},0),totalLosses=Math.abs(sold.filter(function(p){return p.prf<0;}).reduce(function(s,p){return s+p.prf;},0));
+    const tax=[["סיכום מס לצרכי דיווח",""],["",""],["שנה",""+new Date().getFullYear()],["שיעור מס",taxR+"%"],["",""],["סהכ רווחים",+totalGains.toFixed(2)],["סהכ הפסדים (קיזוז)",+(-totalLosses).toFixed(2)],["בסיס חיוב נטו",+netTaxable.toFixed(2)],["",""],["מס ללא קיזוז",+(Math.round(totalGains*(taxR/100)*100)/100)],["מס אחרי קיזוז",+taxDue.toFixed(2)],["חסכון בקיזוז",+Math.max(0,Math.round(totalGains*(taxR/100)*100)/100-taxDue).toFixed(2)],["",""],["רווח נקי לאחר מס",+(allPrf-taxDue).toFixed(2)]];
+    const ws4=XLSX.utils.aoa_to_sheet(tax);ws4["!cols"]=[{wch:22},{wch:16}];XLSX.utils.book_append_sheet(wb,ws4,"סיכום מס");
+    const now=new Date(),fname="blink_pro_"+now.getFullYear()+("0"+(now.getMonth()+1)).slice(-2)+("0"+now.getDate()).slice(-2)+".xlsx";
+    XLSX.writeFile(wb,fname);showToast("📗 הקובץ הורד: "+fname);
+  }catch(e){showToast("⚠️ שגיאה בייצוא: "+e.message);console.error(e);}
 }
 
-function exportCSV(){
-  const rows=[["סימול","מניות","מחיר ממוצע","מחיר נוכחי","רווח/הפסד $","ענף"]];
-  H.forEach(function(h){
-    const pnl=h.sh*h.pr-h.sh*h.avg;
-    rows.push([h.t,h.sh,h.avg,h.pr,+pnl.toFixed(2),h.sec]);
-  });
-  const csv=rows.map(function(r){return r.join(",");}).join("\n");
-  const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="blink_portfolio.csv";
-  a.click();
-  showToast("📄 CSV הורד!");
-}
+function exportCSV(){const rows=[["סימול","מניות","מחיר ממוצע","מחיר נוכחי","רווח/הפסד $","ענף"]];H.forEach(function(h){const pnl=h.sh*h.pr-h.sh*h.avg;rows.push([h.t,h.sh,h.avg,h.pr,+pnl.toFixed(2),h.sec]);});const csv=rows.map(function(r){return r.join(",");}).join("\n"),blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="blink_portfolio.csv";a.click();showToast("📄 CSV הורד!");}
 
-function exportJSON(){
-  const data={H,cash,txns,sold,exportedAt:new Date().toISOString(),version:"1.0"};
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="blink_backup_"+new Date().toISOString().slice(0,10)+".json";
-  a.click();
-  showToast("💾 גיבוי JSON הורד!");
-}
+function exportJSON(){const data={H,cash,txns,sold,exportedAt:new Date().toISOString(),version:"1.0"},blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="blink_backup_"+new Date().toISOString().slice(0,10)+".json";a.click();showToast("💾 גיבוי JSON הורד!");}
 
-function importJSON(event){
-  const file=event.target.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=function(e){
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!data.H||!Array.isArray(data.H)) throw new Error("קובץ לא תקין");
-      if(!confirm("לשחזר נתונים מהקובץ? הנתונים הנוכחיים יוחלפו.")) return;
-      H=data.H; cash=data.cash||0; txns=data.txns||[]; sold=data.sold||[];
-      renderAll();
-      showToast("✅ נתונים שוחזרו בהצלחה!");
-    }catch(err){
-      showToast("⚠️ שגיאה בייבוא: "+err.message);
-    }
-  };
-  reader.readAsText(file);
-  event.target.value="";
-}
+function importJSON(event){const file=event.target.files[0];if(!file) return;const reader=new FileReader();reader.onload=function(e){try{const data=JSON.parse(e.target.result);if(!data.H||!Array.isArray(data.H)) throw new Error("קובץ לא תקין");if(!confirm("לשחזר נתונים מהקובץ? הנתונים הנוכחיים יוחלפו.")) return;H=data.H;cash=data.cash||0;txns=data.txns||[];sold=data.sold||[];renderAll();showToast("✅ נתונים שוחזרו בהצלחה!");}catch(err){showToast("⚠️ שגיאה בייבוא: "+err.message);}};reader.readAsText(file);event.target.value="";}
 
-// ══════════════════════════════════════════════════════
-// PWA — Progressive Web App
-// ══════════════════════════════════════════════════════
 var _pwaInstallEvent=null;
 
 function setupPWA(){
-  // Inject dynamic manifest
-  const manifest={
-    name:"Blink Pro Portfolio",
-    short_name:"Blink Pro",
-    description:"מנהל תיק השקעות מקצועי",
-    start_url:".",
-    display:"standalone",
-    background_color:"#050911",
-    theme_color:"#050911",
-    orientation:"portrait-primary",
-    icons:[
-      {src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23050911' rx='24'/><text y='130' x='20' font-size='120'>📊</text></svg>",sizes:"192x192",type:"image/svg+xml"},
-      {src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23050911' rx='60'/><text y='360' x='40' font-size='320'>📊</text></svg>",sizes:"512x512",type:"image/svg+xml"}
-    ]
-  };
-  const blob=new Blob([JSON.stringify(manifest)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
+  const manifest={name:"Blink Pro Portfolio",short_name:"Blink Pro",description:"מנהל תיק השקעות מקצועי",start_url:".",display:"standalone",background_color:"#050911",theme_color:"#050911",orientation:"portrait-primary",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23050911' rx='24'/><text y='130' x='20' font-size='120'>📊</text></svg>",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23050911' rx='60'/><text y='360' x='40' font-size='320'>📊</text></svg>",sizes:"512x512",type:"image/svg+xml"}]};
+  const blob=new Blob([JSON.stringify(manifest)],{type:"application/json"}),url=URL.createObjectURL(blob);
   document.getElementById("pwa-manifest").href=url;
-
-  // Listen for install prompt
-  window.addEventListener("beforeinstallprompt",function(e){
-    e.preventDefault();
-    _pwaInstallEvent=e;
-    const card=document.getElementById("pwa-card");
-    if(card) card.style.display="block";
-  });
-
-  // Installed
-  window.addEventListener("appinstalled",function(){
-    _pwaInstallEvent=null;
-    const card=document.getElementById("pwa-card");
-    const doneCard=document.getElementById("pwa-installed-card");
-    if(card) card.style.display="none";
-    if(doneCard) doneCard.style.display="block";
-    showToast("🎉 Blink Pro הותקן על מסך הבית!");
-  });
-
-  // Already standalone (PWA mode)
-  if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone){
-    const card=document.getElementById("pwa-card");
-    const doneCard=document.getElementById("pwa-installed-card");
-    if(card) card.style.display="none";
-    if(doneCard) doneCard.style.display="block";
-  }
+  window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();_pwaInstallEvent=e;const card=document.getElementById("pwa-card");if(card) card.style.display="block";});
+  window.addEventListener("appinstalled",function(){_pwaInstallEvent=null;const card=document.getElementById("pwa-card"),doneCard=document.getElementById("pwa-installed-card");if(card) card.style.display="none";if(doneCard) doneCard.style.display="block";showToast("🎉 Blink Pro הותקן על מסך הבית!");});
+  if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone){const card=document.getElementById("pwa-card"),doneCard=document.getElementById("pwa-installed-card");if(card) card.style.display="none";if(doneCard) doneCard.style.display="block";}
 }
 
-function installPWA(){
-  if(!_pwaInstallEvent){
-    showToast("💡 ב-Chrome: תפריט ⋮ → הוסף למסך הבית");
-    return;
-  }
-  _pwaInstallEvent.prompt();
-  _pwaInstallEvent.userChoice.then(function(r){
-    if(r.outcome==="accepted") showToast("✅ Blink Pro מותקן!");
-    else showToast("ביטלת את ההתקנה");
-    _pwaInstallEvent=null;
-  });
-}
+function installPWA(){if(!_pwaInstallEvent){showToast("💡 ב-Chrome: תפריט ⋮ → הוסף למסך הבית");return;}_pwaInstallEvent.prompt();_pwaInstallEvent.userChoice.then(function(r){if(r.outcome==="accepted") showToast("✅ Blink Pro מותקן!");else showToast("ביטלת את ההתקנה");_pwaInstallEvent=null;});}
 
-// keyframe refs for flash (added via JS to avoid CSP issues)
 var styleEl=document.createElement("style");
 styleEl.textContent="@keyframes flashG{0%,100%{background:transparent}50%{background:rgba(0,232,122,.07)}}@keyframes flashR{0%,100%{background:transparent}50%{background:rgba(255,58,110,.07)}}";
 document.head.appendChild(styleEl);
 
-// ── ON LOAD: restore server URL + check permission ────
 window.addEventListener("load",function(){
   if("Notification" in window) setTimeout(function(){updateNotifUI(Notification.permission);},300);
-  // Restore server URL from localStorage — auto-connect on every load
   var saved=localStorage.getItem("blinkServerUrl");
-  if(saved){
-    serverUrl=saved;
-    var inp=document.getElementById("server-url-inp");
-    if(inp) inp.value=saved;
-    _setEl("server-status","<span style='color:var(--gld)'>⏳ מתחבר לשרת...</span>");
-    // Auto-connect silently (with retry for Render cold start)
-    setTimeout(function(){
-      testServerConnection(saved, false).then(function(ok){
-        if(ok){
-          startKeepAlive(); // keep server awake 24/7
-        } else {
-          // Schedule a retry after 90s (Render slow cold start)
-          setTimeout(function(){
-            if(!startKeepAlive._running){
-              testServerConnection(saved, false).then(function(ok2){
-                if(ok2) startKeepAlive();
-              });
-            }
-          }, 90000);
-        }
-      });
-    }, 1500);
-  }
+  if(saved){serverUrl=saved;var inp=document.getElementById("server-url-inp");if(inp) inp.value=saved;_setEl("server-status","<span style='color:var(--gld)'>⏳ מתחבר לשרת...</span>");setTimeout(function(){testServerConnection(saved,false).then(function(ok){if(ok){startKeepAlive();}else{setTimeout(function(){if(!startKeepAlive._running){testServerConnection(saved,false).then(function(ok2){if(ok2) startKeepAlive();});}},90000);}});},1500);}
 });
 
 // ══════════════════════════════════════════════════════
 // LOGIN — SHA-256 Password Gate
 // ══════════════════════════════════════════════════════
-var _PASSWORD_HASH = "4e49800fbc3cefb76b1b887fa36a8dbd6dd283667258c613e1754fa3d266fefb";
+var _PASSWORD_HASH = "6a17c5100da5b74f8f9ebc17b38873e073b204d4661c3d9479a7a64f2ebc4b1b";
 var _SESSION_KEY   = "blinkAuth_v1";
-var _SESSION_TTL   = 7 * 24 * 60 * 60 * 1000; // 7 days
+var _SESSION_TTL   = 7 * 24 * 60 * 60 * 1000;
 
 async function _sha256(str){
-  var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join("");
 }
 
 function _checkSession(){
-  try{
-    var raw = sessionStorage.getItem(_SESSION_KEY) || localStorage.getItem(_SESSION_KEY);
-    if(!raw) return false;
-    var s = JSON.parse(raw);
-    if(s.hash !== _PASSWORD_HASH) return false;
-    if(Date.now() - s.ts > _SESSION_TTL) return false;
-    return true;
-  }catch(e){ return false; }
+  try{var raw=sessionStorage.getItem(_SESSION_KEY)||localStorage.getItem(_SESSION_KEY);if(!raw) return false;var s=JSON.parse(raw);if(s.hash!==_PASSWORD_HASH) return false;if(Date.now()-s.ts>_SESSION_TTL) return false;return true;}catch(e){return false;}
 }
 
-function _saveSession(){
-  // Session intentionally NOT saved — login required every visit
-}
+function _saveSession(){}
 
 async function doLogin(){
-  var inp = document.getElementById("login-pass-inp");
-  var btn = document.getElementById("login-btn");
-  var err = document.getElementById("login-error");
-  var pass = inp.value;
+  var inp=document.getElementById("login-pass-inp"),btn=document.getElementById("login-btn"),err=document.getElementById("login-error"),pass=inp.value;
   if(!pass) return;
-
-  btn.disabled = true;
-  (document.getElementById("login-btn-txt")||{}).textContent = "⏳ בודק...";
-  err.classList.remove("show");
-
-  var hash = await _sha256(pass);
-
-  if(hash === _PASSWORD_HASH){
+  btn.disabled=true;(document.getElementById("login-btn-txt")||{}).textContent="⏳ בודק...";err.classList.remove("show");
+  var hash=await _sha256(pass);
+  if(hash===_PASSWORD_HASH){
     _saveSession();
-    var screen = document.getElementById("login-screen");
-    screen.style.transition = "opacity .5s ease";
-    screen.style.opacity = "0";
-    setTimeout(function(){ screen.classList.add("hidden"); }, 500);
-    (document.getElementById("login-btn-txt")||{}).textContent = "✅ כניסה!";
-  } else {
-    inp.classList.add("shake");
-    err.classList.add("show");
-    inp.value = "";
-    syncDots();
-    btn.disabled = false;
-    (document.getElementById("login-btn-txt")||{}).textContent = "🔓 כניסה";
-    setTimeout(function(){ inp.classList.remove("shake"); }, 400);
-    inp.focus();
+    var screen=document.getElementById("login-screen");
+    screen.style.transition="opacity .5s ease";screen.style.opacity="0";
+    setTimeout(function(){screen.classList.add("hidden");},500);
+    (document.getElementById("login-btn-txt")||{}).textContent="✅ כניסה!";
+  }else{
+    inp.classList.add("shake");err.classList.add("show");inp.value="";syncDots();
+    btn.disabled=false;(document.getElementById("login-btn-txt")||{}).textContent="🔓 כניסה";
+    setTimeout(function(){inp.classList.remove("shake");},400);inp.focus();
   }
 }
 
-function syncDots(){
-  var val = document.getElementById("login-pass-inp").value;
-  for(var i=0;i<4;i++){
-    var d = document.getElementById("ld"+i);
-    if(d) d.style.background = i < val.length ? "var(--acc)" : "rgba(65,85,112,.4)";
-  }
-}
+function syncDots(){var val=document.getElementById("login-pass-inp").value;for(var i=0;i<4;i++){var d=document.getElementById("ld"+i);if(d) d.style.background=i<val.length?"var(--acc)":"rgba(65,85,112,.4)";}}
 
-function toggleLoginEye(){
-  var inp = document.getElementById("login-pass-inp");
-  var btn = document.getElementById("login-eye-btn");
-  if(inp.type === "password"){ inp.type = "text"; btn.textContent = "🙈"; }
-  else { inp.type = "password"; btn.textContent = "👁"; }
-}
+function toggleLoginEye(){var inp=document.getElementById("login-pass-inp"),btn=document.getElementById("login-eye-btn");if(inp.type==="password"){inp.type="text";btn.textContent="🙈";}else{inp.type="password";btn.textContent="👁";}}
 
-// ── Init: always show login on every visit ────────────
 (function(){
-  // Clear any old session so login always appears
-  try{ sessionStorage.removeItem(_SESSION_KEY); localStorage.removeItem(_SESSION_KEY); }catch(e){}
-  setTimeout(function(){
-    var inp = document.getElementById("login-pass-inp");
-    if(inp) inp.focus();
-  }, 400);
+  try{sessionStorage.removeItem(_SESSION_KEY);localStorage.removeItem(_SESSION_KEY);}catch(e){}
+  setTimeout(function(){var inp=document.getElementById("login-pass-inp");if(inp) inp.focus();},400);
 })();
-
-
-
 </script>
 </body>
 </html>
