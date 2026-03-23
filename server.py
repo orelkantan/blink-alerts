@@ -1,27 +1,51 @@
 """
 Blink Pro — Price Alert Server
-Checks Yahoo Finance every 60 seconds, sends Telegram alerts to @orelk24
-Auto-registers Telegram webhook on startup.
+Checks Yahoo Finance every 60 seconds, sends Telegram alerts.
+Alerts are persisted to alerts.json — survive server restarts.
 """
 
 import os, time, json, logging, requests
 from datetime import datetime
 from flask import Flask, request, jsonify, make_response
-from threading import Thread
+from threading import Thread, Lock
 
 # ── CONFIG ────────────────────────────────────────────
 BOT_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID     = os.environ.get("TELEGRAM_CHAT_ID", "")
-CHECK_EVERY = 60   # seconds
-RENDER_URL  = os.environ.get("RENDER_EXTERNAL_URL", "")  # auto-set by Render
+CHECK_EVERY = 60
+RENDER_URL  = os.environ.get("RENDER_EXTERNAL_URL", "")
+ALERTS_FILE = "alerts.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-app    = Flask(__name__)
-alerts = []   # in-memory alert store
+app        = Flask(__name__)
+alerts     = []
+alerts_lock = Lock()
 
-# ── CORS — allow requests from any HTML file / browser ────
+# ── PERSIST ALERTS TO FILE ────────────────────────────
+def load_alerts():
+    global alerts
+    try:
+        if os.path.exists(ALERTS_FILE):
+            with open(ALERTS_FILE, "r") as f:
+                data = json.load(f)
+                if isinstance(data, list):
+                    alerts = data
+                    log.info(f"✅ Loaded {len(alerts)} alerts from file")
+    except Exception as e:
+        log.error(f"Failed to load alerts: {e}")
+        alerts = []
+
+def save_alerts():
+    try:
+        with alerts_lock:
+            with open(ALERTS_FILE, "w") as f:
+                json.dump(alerts, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        log.error(f"Failed to save alerts: {e}")
+
+# ── CORS ──────────────────────────────────────────────
 @app.after_request
 def add_cors(response):
     response.headers["Access-Control-Allow-Origin"]  = "*"
@@ -38,8 +62,8 @@ def handle_options():
         r.headers["Access-Control-Allow-Headers"] = "Content-Type"
         return r
 
-# ── TELEGRAM HELPERS ──────────────────────────────────
-def tg(method: str, payload: dict):
+# ── TELEGRAM ──────────────────────────────────────────
+def tg(method, payload):
     if not BOT_TOKEN:
         return None
     try:
@@ -52,11 +76,10 @@ def tg(method: str, payload: dict):
         log.error(f"Telegram {method} failed: {e}")
         return None
 
-def send_telegram(chat_id: str, text: str):
+def send_telegram(chat_id, text):
     tg("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 def register_webhook():
-    """Register this server's URL as the Telegram webhook."""
     if not BOT_TOKEN or not RENDER_URL:
         log.warning("Cannot register webhook — BOT_TOKEN or RENDER_EXTERNAL_URL missing")
         return
@@ -71,14 +94,13 @@ def get_webhook_info():
     return tg("getWebhookInfo", {})
 
 # ── YAHOO FINANCE ─────────────────────────────────────
-def fetch_prices(tickers: list) -> dict:
+def fetch_prices(tickers):
     if not tickers:
         return {}
     symbols = ",".join(set(tickers))
     url = (
         f"https://query1.finance.yahoo.com/v7/finance/quote"
-        f"?symbols={symbols}"
-        f"&fields=regularMarketPrice,regularMarketChange"
+        f"?symbols={symbols}&fields=regularMarketPrice,regularMarketChange"
     )
     headers = {"User-Agent": "Mozilla/5.0 (compatible; BlinkAlertBot/1.0)"}
     try:
@@ -90,16 +112,18 @@ def fetch_prices(tickers: list) -> dict:
         log.error(f"Yahoo fetch failed: {e}")
         return {}
 
-# ── ALERT CHECK LOOP ──────────────────────────────────
+# ── ALERT LOOP ────────────────────────────────────────
 def alert_loop():
     log.info(f"Alert loop started — checking every {CHECK_EVERY}s")
     while True:
         try:
-            active = [a for a in alerts if not a["triggered"]]
+            with alerts_lock:
+                active = [a for a in alerts if not a["triggered"]]
             if active:
                 tickers = list({a["ticker"] for a in active})
                 prices  = fetch_prices(tickers)
                 log.info(f"Checked {tickers} → {prices}")
+                changed = False
                 for a in active:
                     price = prices.get(a["ticker"])
                     if price is None:
@@ -110,6 +134,7 @@ def alert_loop():
                     )
                     if hit:
                         a["triggered"] = True
+                        changed = True
                         dir_emoji = "🟢⬆️" if a["direction"] == "above" else "🔴⬇️"
                         dir_txt   = "עלתה מעל" if a["direction"] == "above" else "ירדה מתחת"
                         msg = (
@@ -123,6 +148,8 @@ def alert_loop():
                         chat = CHAT_ID or a.get("chatId", "")
                         if chat:
                             send_telegram(chat, msg)
+                if changed:
+                    save_alerts()
         except Exception as e:
             log.error(f"Alert loop error: {e}")
         time.sleep(CHECK_EVERY)
@@ -131,11 +158,10 @@ def alert_loop():
 @app.route("/", methods=["GET"])
 def health():
     return jsonify({
-        "status": "running",
-        "alerts_total": len(alerts),
+        "status":        "running",
+        "alerts_total":  len(alerts),
         "alerts_active": len([a for a in alerts if not a["triggered"]]),
-        "webhook": get_webhook_info(),
-        "time": datetime.now().isoformat()
+        "time":          datetime.now().isoformat()
     })
 
 @app.route("/alerts", methods=["GET"])
@@ -169,10 +195,11 @@ def add_alert():
         "chatId":      chat_id,
         "addedAt":     datetime.now().isoformat()
     }
-    alerts.append(alert)
+    with alerts_lock:
+        alerts.append(alert)
+    save_alerts()
     log.info(f"Alert added: {ticker} {direction} ${target}")
 
-    # Confirm via Telegram
     dir_txt   = "יעלה מעל" if direction == "above" else "ירד מתחת"
     dir_emoji = "⬆️" if direction == "above" else "⬇️"
     if chat_id:
@@ -188,14 +215,20 @@ def add_alert():
 @app.route("/alerts/<int:alert_id>", methods=["DELETE"])
 def delete_alert(alert_id):
     global alerts
-    before = len(alerts)
-    alerts = [a for a in alerts if a["id"] != alert_id]
-    return jsonify({"deleted": len(alerts) < before})
+    with alerts_lock:
+        before = len(alerts)
+        alerts = [a for a in alerts if a["id"] != alert_id]
+        deleted = len(alerts) < before
+    if deleted:
+        save_alerts()
+    return jsonify({"deleted": deleted})
 
 @app.route("/alerts/reset", methods=["POST"])
 def reset_alerts():
-    for a in alerts:
-        a["triggered"] = False
+    with alerts_lock:
+        for a in alerts:
+            a["triggered"] = False
+    save_alerts()
     return jsonify({"reset": len(alerts)})
 
 @app.route("/price/<ticker>", methods=["GET"])
@@ -208,12 +241,11 @@ def get_price(ticker):
 
 @app.route("/setup-webhook", methods=["GET"])
 def setup_webhook():
-    """Call this URL once to register the Telegram webhook manually."""
     register_webhook()
     info = get_webhook_info()
     return jsonify({"webhook_info": info})
 
-# ── TELEGRAM WEBHOOK HANDLER ──────────────────────────
+# ── TELEGRAM WEBHOOK ──────────────────────────────────
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
     data = request.get_json(force=True) or {}
@@ -259,17 +291,18 @@ def telegram_webhook():
 
 # ── STARTUP ───────────────────────────────────────────
 def startup():
+    load_alerts()  # ← Load persisted alerts on every restart
     Thread(target=alert_loop, daemon=True).start()
-    # Register webhook with Telegram after short delay (let server start first)
     def delayed_webhook():
         time.sleep(5)
         register_webhook()
-        # Send startup notification
         if CHAT_ID:
+            active_count = len([a for a in alerts if not a["triggered"]])
             send_telegram(CHAT_ID,
-                "🟢 <b>Blink Pro Alert Bot הופעל!</b>\n\n"
+                f"🟢 <b>Blink Pro Alert Bot הופעל!</b>\n\n"
                 f"⏱ בודק מחירים כל {CHECK_EVERY} שניות\n"
-                "הקלד /status לרשימת ההתראות"
+                f"📊 התראות שמורות: <b>{active_count}</b>\n"
+                f"הקלד /status לרשימת ההתראות"
             )
     Thread(target=delayed_webhook, daemon=True).start()
 
