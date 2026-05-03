@@ -10,17 +10,19 @@ from flask import Flask, request, jsonify, make_response
 from threading import Thread, Lock
 
 # ── CONFIG ────────────────────────────────────────────
+# ב-Render, הגדר את המשתנים האלו תחת Environment Variables
 BOT_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID     = os.environ.get("TELEGRAM_CHAT_ID", "")
 CHECK_EVERY = 60
+# הכתובת של השרת שלך ב-Render (למשל https://blink-alerts.onrender.com)
 RENDER_URL  = os.environ.get("RENDER_EXTERNAL_URL", "")
 ALERTS_FILE = "alerts.json"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-app        = Flask(__name__)
-alerts     = []
+app         = Flask(__name__)
+alerts      = []
 alerts_lock = Lock()
 
 # ── PERSIST ALERTS TO FILE ────────────────────────────
@@ -154,12 +156,13 @@ def alert_loop():
             log.error(f"Alert loop error: {e}")
         time.sleep(CHECK_EVERY)
 
-# ── REST API ──────────────────────────────────────────
+# ── REST API / HEALTH CHECK ───────────────────────────
 @app.route("/", methods=["GET"])
 def health():
+    # נתיב זה משמש את UptimeRobot כדי להשאיר את הבוט פעיל
     return jsonify({
-        "status":        "running",
-        "alerts_total":  len(alerts),
+        "status":        "online",
+        "bot":           "Blink Pro Active",
         "alerts_active": len([a for a in alerts if not a["triggered"]]),
         "time":          datetime.now().isoformat()
     })
@@ -187,13 +190,13 @@ def add_alert():
         return jsonify({"error": "direction must be above or below"}), 400
 
     alert = {
-        "id":          int(time.time() * 1000),
-        "ticker":      ticker,
+        "id":           int(time.time() * 1000),
+        "ticker":       ticker,
         "targetPrice": round(target, 4),
-        "direction":   direction,
-        "triggered":   False,
-        "chatId":      chat_id,
-        "addedAt":     datetime.now().isoformat()
+        "direction":    direction,
+        "triggered":    False,
+        "chatId":       chat_id,
+        "addedAt":      datetime.now().isoformat()
     }
     with alerts_lock:
         alerts.append(alert)
@@ -291,8 +294,10 @@ def telegram_webhook():
 
 # ── STARTUP ───────────────────────────────────────────
 def startup():
-    load_alerts()  # ← Load persisted alerts on every restart
+    load_alerts()  
+    # הפעלת לולאת הבדיקה ב-Thread נפרד
     Thread(target=alert_loop, daemon=True).start()
+    
     def delayed_webhook():
         time.sleep(5)
         register_webhook()
@@ -309,6 +314,7 @@ def startup():
 startup()
 
 if __name__ == "__main__":
+    # Render מעביר את הפורט במשתנה סביבה
     port = int(os.environ.get("PORT", 5000))
     log.info(f"Server starting on port {port}")
     app.run(host="0.0.0.0", port=port)
