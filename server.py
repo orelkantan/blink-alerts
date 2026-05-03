@@ -1,7 +1,8 @@
 """
-Blink Pro — Price Alert Server
-Checks Yahoo Finance every 60 seconds, sends Telegram alerts.
-Alerts are persisted to alerts.json — survive server restarts.
+Blink Pro — Price Alert Server (Stable Version)
+- Checks Yahoo Finance every 60s
+- Sends Telegram alerts
+- Allows adding alerts via Website (API) OR Telegram chat
 """
 
 import os, time, json, logging, requests
@@ -10,11 +11,9 @@ from flask import Flask, request, jsonify, make_response
 from threading import Thread, Lock
 
 # ── CONFIG ────────────────────────────────────────────
-# ב-Render, הגדר את המשתנים האלו תחת Environment Variables
 BOT_TOKEN   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHAT_ID     = os.environ.get("TELEGRAM_CHAT_ID", "")
 CHECK_EVERY = 60
-# הכתובת של השרת שלך ב-Render (למשל https://blink-alerts.onrender.com)
 RENDER_URL  = os.environ.get("RENDER_EXTERNAL_URL", "")
 ALERTS_FILE = "alerts.json"
 
@@ -25,7 +24,7 @@ app         = Flask(__name__)
 alerts      = []
 alerts_lock = Lock()
 
-# ── PERSIST ALERTS TO FILE ────────────────────────────
+# ── PERSIST ALERTS ────────────────────────────────────
 def load_alerts():
     global alerts
     try:
@@ -37,7 +36,6 @@ def load_alerts():
                     log.info(f"✅ Loaded {len(alerts)} alerts from file")
     except Exception as e:
         log.error(f"Failed to load alerts: {e}")
-        alerts = []
 
 def save_alerts():
     try:
@@ -59,20 +57,18 @@ def add_cors(response):
 def handle_options():
     if request.method == "OPTIONS":
         r = make_response("", 204)
-        r.headers["Access-Control-Allow-Origin"]  = "*"
-        r.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
-        r.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        r.headers.update({
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        })
         return r
 
-# ── TELEGRAM ──────────────────────────────────────────
+# ── TELEGRAM API ──────────────────────────────────────
 def tg(method, payload):
-    if not BOT_TOKEN:
-        return None
+    if not BOT_TOKEN: return None
     try:
-        r = requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/{method}",
-            json=payload, timeout=10
-        )
+        r = requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/{method}", json=payload, timeout=10)
         return r.json()
     except Exception as e:
         log.error(f"Telegram {method} failed: {e}")
@@ -82,41 +78,28 @@ def send_telegram(chat_id, text):
     tg("sendMessage", {"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
 
 def register_webhook():
-    if not BOT_TOKEN or not RENDER_URL:
-        log.warning("Cannot register webhook — BOT_TOKEN or RENDER_EXTERNAL_URL missing")
-        return
+    if not BOT_TOKEN or not RENDER_URL: return
     webhook_url = RENDER_URL.rstrip("/") + "/webhook"
-    result = tg("setWebhook", {"url": webhook_url, "drop_pending_updates": True})
-    if result and result.get("ok"):
-        log.info(f"✅ Webhook registered: {webhook_url}")
-    else:
-        log.error(f"❌ Webhook registration failed: {result}")
-
-def get_webhook_info():
-    return tg("getWebhookInfo", {})
+    tg("setWebhook", {"url": webhook_url, "drop_pending_updates": True})
+    log.info(f"✅ Webhook set to: {webhook_url}")
 
 # ── YAHOO FINANCE ─────────────────────────────────────
 def fetch_prices(tickers):
-    if not tickers:
-        return {}
+    if not tickers: return {}
     symbols = ",".join(set(tickers))
-    url = (
-        f"https://query1.finance.yahoo.com/v7/finance/quote"
-        f"?symbols={symbols}&fields=regularMarketPrice,regularMarketChange"
-    )
-    headers = {"User-Agent": "Mozilla/5.0 (compatible; BlinkAlertBot/1.0)"}
+    url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbols}"
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
         r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
         quotes = r.json().get("quoteResponse", {}).get("result", [])
         return {q["symbol"]: round(q.get("regularMarketPrice", 0), 4) for q in quotes}
     except Exception as e:
         log.error(f"Yahoo fetch failed: {e}")
         return {}
 
-# ── ALERT LOOP ────────────────────────────────────────
+# ── ALERT LOOP (RUNS 24/7) ────────────────────────────
 def alert_loop():
-    log.info(f"Alert loop started — checking every {CHECK_EVERY}s")
+    log.info("Alert loop started")
     while True:
         try:
             with alerts_lock:
@@ -124,197 +107,101 @@ def alert_loop():
             if active:
                 tickers = list({a["ticker"] for a in active})
                 prices  = fetch_prices(tickers)
-                log.info(f"Checked {tickers} → {prices}")
                 changed = False
                 for a in active:
                     price = prices.get(a["ticker"])
-                    if price is None:
-                        continue
-                    hit = (
-                        (a["direction"] == "above" and price >= a["targetPrice"]) or
-                        (a["direction"] == "below" and price <= a["targetPrice"])
-                    )
+                    if price is None: continue
+                    
+                    hit = (a["direction"] == "above" and price >= a["targetPrice"]) or \
+                          (a["direction"] == "below" and price <= a["targetPrice"])
+                    
                     if hit:
                         a["triggered"] = True
                         changed = True
-                        dir_emoji = "🟢⬆️" if a["direction"] == "above" else "🔴⬇️"
-                        dir_txt   = "עלתה מעל" if a["direction"] == "above" else "ירדה מתחת"
-                        msg = (
-                            f"🔔 <b>התראת מחיר — {a['ticker']}</b>\n\n"
-                            f"{dir_emoji} {a['ticker']} {dir_txt} "
-                            f"<b>${a['targetPrice']:.2f}</b>\n"
-                            f"💰 מחיר נוכחי: <b>${price:.2f}</b>\n"
-                            f"🕐 {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
-                        )
-                        log.info(f"🔔 ALERT FIRED: {a['ticker']} @ {price}")
-                        chat = CHAT_ID or a.get("chatId", "")
-                        if chat:
-                            send_telegram(chat, msg)
-                if changed:
-                    save_alerts()
+                        dir_txt = "עלתה מעל" if a["direction"] == "above" else "ירדה מתחת"
+                        msg = (f"🔔 <b>התראה — {a['ticker']}</b>\n\n"
+                               f"{a['ticker']} {dir_txt} <b>${a['targetPrice']:.2f}</b>\n"
+                               f"💰 מחיר נוכחי: <b>${price:.2f}</b>")
+                        send_telegram(a.get("chatId", CHAT_ID), msg)
+                if changed: save_alerts()
         except Exception as e:
-            log.error(f"Alert loop error: {e}")
+            log.error(f"Loop error: {e}")
         time.sleep(CHECK_EVERY)
 
-# ── REST API / HEALTH CHECK ───────────────────────────
+# ── ROUTES ────────────────────────────────────────────
 @app.route("/", methods=["GET"])
 def health():
-    # נתיב זה משמש את UptimeRobot כדי להשאיר את הבוט פעיל
-    return jsonify({
-        "status":        "online",
-        "bot":           "Blink Pro Active",
-        "alerts_active": len([a for a in alerts if not a["triggered"]]),
-        "time":          datetime.now().isoformat()
-    })
+    return jsonify({"status": "online", "active_alerts": len([a for a in alerts if not a["triggered"]])})
 
-@app.route("/alerts", methods=["GET"])
-def get_alerts():
+@app.route("/alerts", methods=["GET", "POST"])
+def manage_alerts():
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        return add_new_alert(data)
     return jsonify(alerts)
 
-@app.route("/alerts", methods=["POST"])
-def add_alert():
-    data      = request.get_json(force=True) or {}
-    ticker    = str(data.get("ticker", "")).strip().upper()
-    direction = data.get("direction", "above")
-    chat_id   = data.get("chatId", CHAT_ID)
+def add_new_alert(data):
+    ticker = str(data.get("ticker", "")).upper().strip()
     try:
         target = float(data.get("targetPrice", 0))
-    except (ValueError, TypeError):
-        return jsonify({"error": "targetPrice must be a number"}), 400
-
-    if not ticker:
-        return jsonify({"error": "ticker required"}), 400
-    if target <= 0:
-        return jsonify({"error": "targetPrice must be > 0"}), 400
-    if direction not in ("above", "below"):
-        return jsonify({"error": "direction must be above or below"}), 400
-
+    except: return jsonify({"error": "Invalid price"}), 400
+    
     alert = {
-        "id":           int(time.time() * 1000),
-        "ticker":       ticker,
-        "targetPrice": round(target, 4),
-        "direction":    direction,
-        "triggered":    False,
-        "chatId":       chat_id,
-        "addedAt":      datetime.now().isoformat()
+        "id": int(time.time() * 1000),
+        "ticker": ticker,
+        "targetPrice": target,
+        "direction": data.get("direction", "above"),
+        "triggered": False,
+        "chatId": data.get("chatId", CHAT_ID),
+        "addedAt": datetime.now().isoformat()
     }
     with alerts_lock:
         alerts.append(alert)
     save_alerts()
-    log.info(f"Alert added: {ticker} {direction} ${target}")
-
-    dir_txt   = "יעלה מעל" if direction == "above" else "ירד מתחת"
-    dir_emoji = "⬆️" if direction == "above" else "⬇️"
-    if chat_id:
-        send_telegram(chat_id,
-            f"✅ <b>התראה נוספה!</b>\n\n"
-            f"📈 מניה: <b>{ticker}</b>\n"
-            f"{dir_emoji} יעד: <b>${target:.2f}</b> ({dir_txt})\n"
-            f"⏱ בדיקה כל {CHECK_EVERY} שניות\n\n"
-            f"תשלח הודעה ברגע שהמחיר יגיע ליעד!"
-        )
     return jsonify(alert), 201
 
-@app.route("/alerts/<int:alert_id>", methods=["DELETE"])
-def delete_alert(alert_id):
-    global alerts
-    with alerts_lock:
-        before = len(alerts)
-        alerts = [a for a in alerts if a["id"] != alert_id]
-        deleted = len(alerts) < before
-    if deleted:
-        save_alerts()
-    return jsonify({"deleted": deleted})
-
-@app.route("/alerts/reset", methods=["POST"])
-def reset_alerts():
-    with alerts_lock:
-        for a in alerts:
-            a["triggered"] = False
-    save_alerts()
-    return jsonify({"reset": len(alerts)})
-
-@app.route("/price/<ticker>", methods=["GET"])
-def get_price(ticker):
-    prices = fetch_prices([ticker.upper()])
-    p = prices.get(ticker.upper())
-    if p is None:
-        return jsonify({"error": "not found"}), 404
-    return jsonify({"ticker": ticker.upper(), "price": p})
-
-@app.route("/setup-webhook", methods=["GET"])
-def setup_webhook():
-    register_webhook()
-    info = get_webhook_info()
-    return jsonify({"webhook_info": info})
-
-# ── TELEGRAM WEBHOOK ──────────────────────────────────
+# ── TELEGRAM WEBHOOK (HANDLES COMMANDS & TEXT) ────────
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
     data = request.get_json(force=True) or {}
-    msg  = data.get("message", {})
+    msg = data.get("message", {})
     text = msg.get("text", "").strip()
-    cid  = str(msg.get("chat", {}).get("id", ""))
-    if not cid:
-        return "ok"
+    cid = str(msg.get("chat", {}).get("id", ""))
+    
+    if not text or not cid: return "ok"
 
+    # פקודות רגילות
     if text.startswith("/start"):
-        send_telegram(cid,
-            f"👋 <b>שלום! Blink Pro Alert Bot פעיל</b>\n\n"
-            f"🔔 אני אשלח לך התראה כשמניה מגיעה למחיר היעד שלך.\n\n"
-            f"🆔 ה-Chat ID שלך: <code>{cid}</code>\n\n"
-            f"📊 התראות פעילות כרגע: <b>{len([a for a in alerts if not a['triggered']])}</b>\n\n"
-            f"הקלד /status לרשימת ההתראות\nהקלד /help לעזרה"
-        )
+        send_telegram(cid, f"👋 שלום! אני בוט ההתראות שלך.\nה-Chat ID שלך הוא: <code>{cid}</code>")
     elif text.startswith("/status"):
         active = [a for a in alerts if not a["triggered"]]
-        if not active:
-            send_telegram(cid, "📭 אין התראות פעילות כרגע\n\nהוסף התראה מהאפליקציה!")
-        else:
-            lines = []
-            for a in active:
-                d = "⬆️ מעל" if a["direction"] == "above" else "⬇️ מתחת"
-                lines.append(f"• <b>{a['ticker']}</b> {d} ${a['targetPrice']:.2f}")
-            send_telegram(cid,
-                f"📊 <b>התראות פעילות ({len(active)}):</b>\n\n" +
-                "\n".join(lines) +
-                f"\n\n⏱ בדיקה כל {CHECK_EVERY} שניות"
-            )
-    elif text.startswith("/help"):
-        send_telegram(cid,
-            "📖 <b>פקודות זמינות:</b>\n\n"
-            "/start — ברכות + Chat ID\n"
-            "/status — רשימת התראות פעילות\n"
-            "/help — עזרה\n\n"
-            "💡 להוסיף התראה — פתח את האפליקציה ולך ל-🔔 התראות מחיר"
-        )
-    else:
-        send_telegram(cid, "הקלד /help לרשימת הפקודות 😊")
+        msg_text = "📊 התראות פעילות:\n" + "\n".join([f"• {a['ticker']} {a['direction']} {a['targetPrice']}" for a in active])
+        send_telegram(cid, msg_text if active else "אין התראות פעילות.")
+    
+    # הוספת התראה ישירות בטקסט (למשל: AAPL above 150)
+    elif any(word in text.lower() for word in ["above", "below"]):
+        try:
+            parts = text.split()
+            ticker = parts[0].upper()
+            direction = parts[1].lower()
+            price = float(parts[2])
+            add_new_alert({"ticker": ticker, "direction": direction, "targetPrice": price, "chatId": cid})
+            send_telegram(cid, f"✅ הוספתי התראה: {ticker} כשיעלה מעל {price}" if direction=="above" else f"✅ הוספתי התראה: {ticker} כשירד מתחת {price}")
+        except:
+            send_telegram(cid, "❌ טעות בפורמט. נסה: AAPL above 200")
+            
     return "ok"
 
 # ── STARTUP ───────────────────────────────────────────
-def startup():
-    load_alerts()  
-    # הפעלת לולאת הבדיקה ב-Thread נפרד
+if __name__ == "__main__":
+    load_alerts()
     Thread(target=alert_loop, daemon=True).start()
     
-    def delayed_webhook():
+    # הגדרת ה-Webhook בטלגרם לאחר עליה
+    def init_webhook():
         time.sleep(5)
         register_webhook()
-        if CHAT_ID:
-            active_count = len([a for a in alerts if not a["triggered"]])
-            send_telegram(CHAT_ID,
-                f"🟢 <b>Blink Pro Alert Bot הופעל!</b>\n\n"
-                f"⏱ בודק מחירים כל {CHECK_EVERY} שניות\n"
-                f"📊 התראות שמורות: <b>{active_count}</b>\n"
-                f"הקלד /status לרשימת ההתראות"
-            )
-    Thread(target=delayed_webhook, daemon=True).start()
+    Thread(target=init_webhook, daemon=True).start()
 
-startup()
-
-if __name__ == "__main__":
-    # Render מעביר את הפורט במשתנה סביבה
     port = int(os.environ.get("PORT", 5000))
-    log.info(f"Server starting on port {port}")
     app.run(host="0.0.0.0", port=port)
